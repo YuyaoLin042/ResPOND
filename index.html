@@ -4,56 +4,36 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>ResPOND BLE Visualization</title>
-  <link rel="manifest" href="manifest.json" />
   <style>
     html, body {
-      margin: 0;
+      margin: 10px;
       padding: 0;
       background: #000000;
       font-family: "Calibri";
       color: #222;
-      overflow: hidden;
-      height: 100vh;
+      overflow-x: hidden;
     }
 
     #container {
-      display: flex;
-      flex-direction: row;
       width: 100%;
-      height: 100%;
-    }
-
-    #sidebar {
-      width: 300px;
-      background: #111;
+      height: 100vh;
       display: flex;
       flex-direction: column;
       align-items: center;
-      padding: 40px 10px;
-      box-sizing: border-box;
-      border-right: 3px solid #369e8e;
-    }
-
-    #main {
-      flex: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      overflow: hidden;
+      justify-content: flex-start;
     }
 
     h1 {
-      font-size: 24px;
+      margin: 80px 0 30px 0;
+      font-size: 60px;
       font-weight: bold;
       color: #ffffff;
       text-align: center;
-      margin-bottom: 40px;
     }
 
-    #connect {
-      margin: 10px 0;
-      padding: 10px 20px;
+    #connect, #fullscreen {
+      margin: 5px 10px;
+      padding: 8px 18px;
       font-size: 16px;
       background: #1976d2;
       color: #ffffff;
@@ -62,41 +42,41 @@
       cursor: pointer;
     }
 
-    #connect:hover {
+    #connect:hover, #fullscreen:hover {
       background: #1565c0;
     }
 
     .infoText {
       font-size: 18px;
       font-weight: bold;
-      margin-top: 20px;
+      margin-bottom: 10px;
       color: gray;
     }
 
     canvas {
-      width: 100%;
-      height: 100%;
+      max-width: 100%;
+      height: auto;
       background: #000000;
-      border: none;
+      border: 3px solid #369e8e;
     }
   </style>
 </head>
 <body>
   <div id="container">
-    <div id="sidebar">
-      <h1>ResPOND</h1>
+    <h1>ResPOND — BLE Real-Time Visualization</h1>
+    <div>
       <button id="connect">Connect BLE Device</button>
-      <p class="infoText">Connected points: <span id="pointsCount">0</span></p>
+      <button id="fullscreen">Fullscreen</button>
     </div>
-    <div id="main">
-      <canvas id="resCanvas" width="2000" height="1000"></canvas>
-    </div>
+    <p class="infoText">Connected points: <span id="pointsCount">0</span></p>
+    <canvas id="resCanvas" width="2000" height="1000"></canvas>
   </div>
 
   <script>
     const canvas = document.getElementById('resCanvas');
     const ctx = canvas.getContext('2d');
     const connectBtn = document.getElementById('connect');
+    const fullscreenBtn = document.getElementById('fullscreen');
     const pointsCountSpan = document.getElementById('pointsCount');
 
     const fish1XY = [], fish2XY = [], fish3XY = [], waveXY = [], vibration = [];
@@ -126,8 +106,8 @@
 
       ctx.stroke();
       ctx.fillStyle = color;
-      ctx.font = "20px Calibri";
-      ctx.fillText(label + " (max: " + maxVal + ")", 10, yOffset + 20);
+      ctx.font = "25px Calibri";
+      ctx.fillText(label + " (max: " + maxVal + ")", 10, yOffset + 18);
     }
 
     function drawLineVibration(data, color, xOffset, yOffset, maxVal, h, label) {
@@ -146,20 +126,21 @@
 
       ctx.stroke();
       ctx.fillStyle = color;
-      ctx.font = "20px Calibri";
-      ctx.fillText(label + " (max: " + maxVal + ")", 10, yOffset + 20);
+      ctx.font = "25px Calibri";
+      ctx.fillText(label + " (max: " + maxVal + ")", 10, yOffset + 18);
     }
 
     function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      const h = canvas.height / 5;
+      const topMargin = 60;
+      const h = (canvas.height - topMargin) / 5;
 
-      drawLine(fish1XY, '#e4b580', 0, 0 * h, yMax[0], h, "fish1XY");
-      drawLine(fish2XY, '#a1daa8', 0, 1 * h, yMax[1], h, "fish2XY");
-      drawLine(fish3XY, '#84bced', 0, 2 * h, yMax[2], h, "fish3XY");
-      drawLine(waveXY,  '#c36363', 0, 3 * h, yMax[3], h, "waveXY");
-      drawLineVibration(vibration, '#555', 0, 4 * h, yMax[4], h, "vibration");
+      drawLine(fish1XY, '#e4b580', 0, 0 * h + topMargin, yMax[0], h, "fish1XY");
+      drawLine(fish2XY, '#a1daa8', 0, 1 * h + topMargin, yMax[1], h, "fish2XY");
+      drawLine(fish3XY, '#84bced', 0, 2 * h + topMargin, yMax[2], h, "fish3XY");
+      drawLine(waveXY,  '#c36363', 0, 3 * h + topMargin, yMax[3], h, "waveXY");
+      drawLineVibration(vibration, '#555', 0, 4 * h + topMargin, yMax[4], h, "vibration");
 
       pointsCountSpan.textContent = fish1XY.length;
 
@@ -197,12 +178,35 @@
       }
     }
 
+    // Save PNG on P
     window.addEventListener('keydown', (e) => {
       if (e.key === 'p' || e.key === 'P') {
         const link = document.createElement('a');
         link.download = 'ResPOND_snapshot.png';
         link.href = canvas.toDataURL();
         link.click();
+      }
+    });
+
+    // Fullscreen API - 双击 canvas 全屏
+    canvas.addEventListener('dblclick', () => {
+      if (canvas.requestFullscreen) {
+        canvas.requestFullscreen();
+      } else if (canvas.webkitRequestFullscreen) {
+        canvas.webkitRequestFullscreen();
+      } else if (canvas.msRequestFullscreen) {
+        canvas.msRequestFullscreen();
+      }
+    });
+
+    // Fullscreen button 点击全屏
+    fullscreenBtn.addEventListener('click', () => {
+      if (canvas.requestFullscreen) {
+        canvas.requestFullscreen();
+      } else if (canvas.webkitRequestFullscreen) {
+        canvas.webkitRequestFullscreen();
+      } else if (canvas.msRequestFullscreen) {
+        canvas.msRequestFullscreen();
       }
     });
 
