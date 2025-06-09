@@ -27,8 +27,8 @@
       background: #111;
       display: flex;
       flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
+      align-items: center; /* 居中 */
+      justify-content: center; /* 居中 */
       border-right: 3px solid #369e8e;
       padding: 20px;
       box-sizing: border-box;
@@ -47,7 +47,7 @@
       font-size: 16px;
       color: #ffffff;
       margin-bottom: 20px;
-      text-align: left;
+      text-align: center;
       width: 100%;
     }
 
@@ -78,9 +78,10 @@
     .infoText {
       font-size: 16px;
       font-weight: normal;
-      margin-bottom: 8px;
+      margin-bottom: 2px; /* ⭐️ 你可以调这里的数字，比如 2px / 4px / 6px 控制行距 */
+      line-height: 1.2;    /* ⭐️ 行高，默认 1.2，你可以改成 1.1 / 1.3 自己试 */
       color: gray;
-      text-align: left;
+      text-align: center;  /* 居中 */
       width: 100%;
     }
 
@@ -88,16 +89,16 @@
       flex: 0 0 70%;
       display: flex;
       flex-direction: column;
-      align-items: flex-start; /* 改成靠左对齐 */
+      align-items: flex-start;
       justify-content: center;
       padding: 10px;
       box-sizing: border-box;
     }
 
     .canvasWrapper {
-      width: 95%; /* 可调宽度 */
+      width: 95%;
       height: 100%;
-      padding-right: 20px; /* 可调右侧间距 */
+      padding-right: 20px;
       box-sizing: border-box;
     }
 
@@ -169,7 +170,7 @@
 
       ctx.stroke();
       ctx.fillStyle = color;
-      ctx.font = "20px Calibri";
+      ctx.font = "bold 20px Calibri"; /* ⭐️ 加粗原始字体 100% */
       ctx.fillText(label + " (max: " + maxVal + ")", 10, yOffset + 18);
     }
 
@@ -189,7 +190,7 @@
 
       ctx.stroke();
       ctx.fillStyle = color;
-      ctx.font = "20px Calibri";
+      ctx.font = "bold 20px Calibri"; /* ⭐️ 加粗原始字体 100% */
       ctx.fillText(label + " (max: " + maxVal + ")", 10, yOffset + 18);
     }
 
@@ -312,3 +313,4 @@
   </script>
 </body>
 </html>
+
