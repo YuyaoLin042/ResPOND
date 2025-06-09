@@ -159,7 +159,7 @@
     function drawLine(data, color, xOffset, yOffset, maxVal, h, label) {
       ctx.beginPath();
       ctx.strokeStyle = color;
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 2;
       ctx.moveTo(xOffset, yOffset + h / 2);
 
       for (let i = 0; i < data.length; i++) {
@@ -179,7 +179,7 @@
 
       ctx.beginPath();
       ctx.strokeStyle = color;
-      ctx.lineWidth = 1;
+      ctx.lineWidth = 2;
       ctx.moveTo(xOffset, baseY);
 
       for (let i = 0; i < data.length; i++) {
