@@ -23,46 +23,42 @@
     }
 
     #sidebar {
-      width: 250px;
+      flex: 0 0 30%; /* 左边占 30% */
       background: #111;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      border-right: 3px solid #369e8e;
-    }
-
-    #sidebar h1 {
-      font-size: 40px;
-      font-weight: bold;
-      color: #ffffff;
-      text-align: center;
-    }
-
-    #main {
-      flex: 1;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: flex-start;
+      justify-content: center;
+      border-right: 3px solid #369e8e;
       padding: 20px;
       box-sizing: border-box;
     }
 
+    #sidebar h1 {
+      font-size: 36px;
+      font-weight: bold;
+      color: #ffffff;
+      text-align: center;
+      margin-bottom: 30px;
+    }
+
     .buttonBar {
-      margin: 10px 0 20px 0;
+      margin-bottom: 20px;
       display: flex;
-      flex-direction: row;
+      flex-direction: column;
       gap: 10px;
+      width: 80%; /* 按钮栏宽度适中 */
     }
 
     button {
-      padding: 10px 18px;
-      font-size: 16px;
+      padding: 6px 12px; /* 小一点 */
+      font-size: 14px; /* 小一点 */
       background: #1976d2;
       color: #ffffff;
       border: none;
-      border-radius: 20px;
+      border-radius: 15px;
       cursor: pointer;
+      width: 100%;
     }
 
     button:hover {
@@ -70,14 +66,24 @@
     }
 
     .infoText {
-      font-size: 18px;
+      font-size: 16px;
       font-weight: bold;
-      margin-bottom: 10px;
+      margin-top: 10px;
       color: gray;
     }
 
+    #main {
+      flex: 0 0 70%; /* 右边占 70% */
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+
     canvas {
-      max-width: 100%;
+      width: 100%;
       height: auto;
       background: #000000;
       border: 3px solid #369e8e;
@@ -88,14 +94,14 @@
   <div id="container">
     <div id="sidebar">
       <h1>ResPOND</h1>
-    </div>
-
-    <div id="main">
       <div class="buttonBar">
         <button id="bleButton">Connect BLE Device</button>
         <button id="fullscreenButton">Fullscreen</button>
       </div>
       <p class="infoText">Connected points: <span id="pointsCount">0</span></p>
+    </div>
+
+    <div id="main">
       <canvas id="resCanvas" width="2000" height="1000"></canvas>
     </div>
   </div>
@@ -138,7 +144,7 @@
 
       ctx.stroke();
       ctx.fillStyle = color;
-      ctx.font = "25px Calibri";
+      ctx.font = "20px Calibri";
       ctx.fillText(label + " (max: " + maxVal + ")", 10, yOffset + 18);
     }
 
@@ -158,7 +164,7 @@
 
       ctx.stroke();
       ctx.fillStyle = color;
-      ctx.font = "25px Calibri";
+      ctx.font = "20px Calibri";
       ctx.fillText(label + " (max: " + maxVal + ")", 10, yOffset + 18);
     }
 
@@ -259,4 +265,3 @@
   </script>
 </body>
 </html>
-
