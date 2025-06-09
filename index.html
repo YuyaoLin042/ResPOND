@@ -29,8 +29,8 @@
       flex-direction: column;
       align-items: center;
       justify-content: flex-start;
-      border-right: 3px solid #369e8e;
-      padding: 20px;
+      border-right: 2px solid #369e8e;
+      padding: 10px;
       box-sizing: border-box;
     }
 
@@ -44,18 +44,18 @@
     }
 
     .authorName {
-      font-size: 16px;
+      font-size: 10px;
       color: #888;
-      margin-bottom: 30px;
+      margin-bottom: 10px;
       text-align: center;
     }
 
     .buttonBar {
-      margin-bottom: 20px;
+      margin-bottom: 40px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
-      width: 80%;
+      gap: 0px;
+      width: 50%;
     }
 
     button {
@@ -74,9 +74,9 @@
     }
 
     .infoText {
-      font-size: 16px;
+      font-size: 8px;
       font-weight: bold;
-      margin-bottom: 8px;
+      margin-bottom: 4px;
       color: gray;
     }
 
@@ -91,7 +91,7 @@
     }
 
     canvas {
-      width: 100%; /* 你改这里可自定义画框宽度 */
+      width: 75%; /* 你改这里可自定义画框宽度 */
       height: 100%;
       background: #000000;
       border: 3px solid #369e8e;
@@ -102,7 +102,7 @@
   <div id="container">
     <div id="sidebar">
       <h1>ResPOND</h1>
-      <p class="authorName">Yuyao Lin IDE</p>
+      <p class="authorName">Yuyao Lin </p>
       <div class="buttonBar">
         <button id="bleButton">Connect BLE Device</button>
         <button id="fullscreenButton">Fullscreen</button>
@@ -133,7 +133,7 @@
     let isFullscreen = false;
     let motorTriggerCount = 0;
 
-    const yMax = [20, 20, 20, 20, 1000];
+    const yMax = [20, 20, 20, 20, 800];
 
     function pushData(arr, val) {
       arr.push(val);
