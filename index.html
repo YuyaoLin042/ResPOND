@@ -115,7 +115,7 @@
       <h1>ResPOND</h1>
       <p class="authorName">Yuyao Lin IDE</p>
       <div class="buttonBar">
-        <button id="bleButton">Connect BLE Device</button>
+        <button id="bleButton">Connect Device</button>
         <button id="fullscreenButton">Fullscreen</button>
       </div>
       <p class="infoText">Connected points: <span id="pointsCount">0</span></p>
@@ -224,7 +224,7 @@
           await bleCharacteristic.startNotifications();
           bleCharacteristic.addEventListener('characteristicvaluechanged', handleData);
 
-          bleButton.textContent = 'Disconnect BLE Device';
+          bleButton.textContent = 'Disconnect Device';
         } catch (e) {
           alert("BLE 连接失败：" + e);
         }
