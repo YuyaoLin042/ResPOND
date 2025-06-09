@@ -95,7 +95,7 @@
 
     .canvasWrapper {
       width: 95%;
-      /* height: 100%; ⭐️ 不要 height */
+      height: 100%; ⭐️ 不要 height */
       padding-right: 20px;
       box-sizing: border-box;
     }
@@ -103,7 +103,7 @@
     canvas {
       display: block;
       width: 100%;  /* 横向自适应 */
-      height: auto; /* 高度按 3000x1000 自动保持 */
+      height: 100%; /* 高度按 3000x1000 自动保持 */
       background: #000000;
       border: 3px solid #369e8e;
     }
@@ -124,7 +124,7 @@
 
     <div id="main">
       <div class="canvasWrapper">
-        <canvas id="resCanvas" width="3000" height="1000"></canvas>
+        <canvas id="resCanvas" width="3000" height="3000"></canvas>
       </div>
     </div>
   </div>
