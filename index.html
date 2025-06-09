@@ -4,6 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>ResPOND BLE Visualization</title>
+  <link rel="manifest" href="manifest.json" />
   <style>
     html, body {
       margin: 0;
@@ -167,16 +168,6 @@
 
     connectBtn.addEventListener('click', async () => {
       try {
-        // ⚠️ 强制请求全屏
-        if (document.documentElement.requestFullscreen) {
-          await document.documentElement.requestFullscreen();
-        } else if (document.documentElement.webkitRequestFullscreen) { /* Safari */
-          await document.documentElement.webkitRequestFullscreen();
-        } else if (document.documentElement.msRequestFullscreen) { /* IE11 */
-          await document.documentElement.msRequestFullscreen();
-        }
-
-        // BLE 连接流程
         const device = await navigator.bluetooth.requestDevice({
           filters: [{ services: ['0000ffe0-0000-1000-8000-00805f9b34fb'] }]
         });
@@ -219,5 +210,3 @@
   </script>
 </body>
 </html>
-
-
