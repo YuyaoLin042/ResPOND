@@ -1,0 +1,212 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>ResPOND BLE Visualization</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #000000;
+      font-family: "Calibri";
+      color: #222;
+      overflow: hidden; /* 不滚动 */
+      height: 100vh;
+    }
+
+    #container {
+      display: flex;
+      flex-direction: row; /* 改为左右布局 */
+      width: 100%;
+      height: 100%;
+    }
+
+    #sidebar {
+      width: 300px; /* 左侧栏固定宽度 */
+      background: #111;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 40px 10px;
+      box-sizing: border-box;
+      border-right: 3px solid #369e8e;
+    }
+
+    #main {
+      flex: 1; /* 右侧自适应剩余空间 */
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+
+    h1 {
+      font-size: 24px;
+      font-weight: bold;
+      color: #ffffff;
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    #connect {
+      margin: 10px 0;
+      padding: 10px 20px;
+      font-size: 16px;
+      background: #1976d2;
+      color: #ffffff;
+      border: none;
+      border-radius: 20px;
+      cursor: pointer;
+    }
+
+    #connect:hover {
+      background: #1565c0;
+    }
+
+    .infoText {
+      font-size: 18px;
+      font-weight: bold;
+      margin-top: 20px;
+      color: gray;
+    }
+
+    canvas {
+      width: 100%; /* 撑满右侧 */
+      height: 100%; /* 撑满右侧 */
+      background: #000000;
+      border: none;
+    }
+  </style>
+</head>
+<body>
+  <div id="container">
+    <div id="sidebar">
+      <h1>ResPOND</h1>
+      <button id="connect">Connect BLE Device</button>
+      <p class="infoText">Connected points: <span id="pointsCount">0</span></p>
+    </div>
+    <div id="main">
+      <canvas id="resCanvas" width="2000" height="1000"></canvas>
+    </div>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('resCanvas');
+    const ctx = canvas.getContext('2d');
+    const connectBtn = document.getElementById('connect');
+    const pointsCountSpan = document.getElementById('pointsCount');
+
+    const fish1XY = [], fish2XY = [], fish3XY = [], waveXY = [], vibration = [];
+    const maxLen = 400;
+
+    const yMax = [20, 20, 20, 20, 1000];
+
+    function pushData(arr, val) {
+      arr.push(val);
+      if (arr.length > maxLen) arr.shift();
+    }
+
+    function normalize(val, max, h) {
+      return h / 2 - (val / max) * h;
+    }
+
+    function drawLine(data, color, xOffset, yOffset, maxVal, h, label) {
+      ctx.beginPath();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1;
+      ctx.moveTo(xOffset, yOffset + h / 2);
+
+      for (let i = 0; i < data.length; i++) {
+        const val = normalize(data[i], maxVal, h);
+        ctx.lineTo(i + xOffset, yOffset + h / 2 + val);
+      }
+
+      ctx.stroke();
+      ctx.fillStyle = color;
+      ctx.font = "20px Calibri";
+      ctx.fillText(label + " (max: " + maxVal + ")", 10, yOffset + 20);
+    }
+
+    function drawLineVibration(data, color, xOffset, yOffset, maxVal, h, label) {
+      const baseY = yOffset + h * 0.65;
+      const scaleHeight = h * 0.3;
+
+      ctx.beginPath();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1;
+      ctx.moveTo(xOffset, baseY);
+
+      for (let i = 0; i < data.length; i++) {
+        const val = baseY - (data[i] / maxVal) * scaleHeight;
+        ctx.lineTo(i + xOffset, val);
+      }
+
+      ctx.stroke();
+      ctx.fillStyle = color;
+      ctx.font = "20px Calibri";
+      ctx.fillText(label + " (max: " + maxVal + ")", 10, yOffset + 20);
+    }
+
+    function draw() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const h = canvas.height / 5;
+
+      drawLine(fish1XY, '#e4b580', 0, 0 * h, yMax[0], h, "fish1XY");
+      drawLine(fish2XY, '#a1daa8', 0, 1 * h, yMax[1], h, "fish2XY");
+      drawLine(fish3XY, '#84bced', 0, 2 * h, yMax[2], h, "fish3XY");
+      drawLine(waveXY,  '#c36363', 0, 3 * h, yMax[3], h, "waveXY");
+      drawLineVibration(vibration, '#555', 0, 4 * h, yMax[4], h, "vibration");
+
+      pointsCountSpan.textContent = fish1XY.length;
+
+      requestAnimationFrame(draw);
+    }
+
+    connectBtn.addEventListener('click', async () => {
+      try {
+        const device = await navigator.bluetooth.requestDevice({
+          filters: [{ services: ['0000ffe0-0000-1000-8000-00805f9b34fb'] }]
+        });
+        const server = await device.gatt.connect();
+        const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
+        const characteristic = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
+        await characteristic.startNotifications();
+        characteristic.addEventListener('characteristicvaluechanged', handleData);
+      } catch (e) {
+        alert("BLE 连接失败：" + e);
+      }
+    });
+
+    function handleData(event) {
+      const value = new TextDecoder().decode(event.target.value).trim();
+      const parts = value.split(',');
+      if (parts.length === 5) {
+        try {
+          pushData(fish1XY, parseFloat(parts[0]));
+          pushData(fish2XY, parseFloat(parts[1]));
+          pushData(fish3XY, parseFloat(parts[2]));
+          pushData(waveXY, parseFloat(parts[3]));
+          pushData(vibration, parseFloat(parts[4]));
+        } catch (e) {
+          console.log("解析错误", e);
+        }
+      }
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'p' || e.key === 'P') {
+        const link = document.createElement('a');
+        link.download = 'ResPOND_snapshot.png';
+        link.href = canvas.toDataURL();
+        link.click();
+      }
+    });
+
+    draw();
+  </script>
+</body>
+</html>
