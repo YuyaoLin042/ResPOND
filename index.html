@@ -47,7 +47,8 @@
       font-size: 16px;
       color: #ffffff;
       margin-bottom: 20px;
-      text-align: center;
+      text-align: left;
+      width: 100%;
     }
 
     .buttonBar {
@@ -79,22 +80,24 @@
       font-weight: normal;
       margin-bottom: 8px;
       color: gray;
+      text-align: left;
+      width: 100%;
     }
 
     #main {
       flex: 0 0 70%;
       display: flex;
       flex-direction: column;
-      align-items: center;
+      align-items: flex-start; /* 改成靠左对齐 */
       justify-content: center;
       padding: 10px;
       box-sizing: border-box;
     }
 
     .canvasWrapper {
-      width: 70%; /* 你可以改这里画框宽度比例 */
+      width: 95%; /* 可调宽度 */
       height: 100%;
-      padding-right: 40px; /* 你可以改这里控制右边空隙 */
+      padding-right: 20px; /* 可调右侧间距 */
       box-sizing: border-box;
     }
 
@@ -136,7 +139,7 @@
     const container = document.getElementById('container');
 
     const fish1XY = [], fish2XY = [], fish3XY = [], waveXY = [], vibration = [];
-    const maxLen = canvas.width; // 画满整个画框
+    const maxLen = canvas.width;
     let bleDevice = null;
     let bleCharacteristic = null;
     let isFullscreen = false;
@@ -276,7 +279,6 @@
           pushData(waveXY, wave);
           pushData(vibration, vib);
 
-          // 模拟 Arduino 触发逻辑
           let mismatchCount = 0;
           const diffThreshold = 4.0;
           const requiredFishTriggers = 2;
