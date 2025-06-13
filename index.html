@@ -138,7 +138,7 @@
     const motorCountSpan = document.getElementById('motorCount');
     const container = document.getElementById('container');
 
-    const fish1XY = [], fish2XY = [], fish3XY = [], waveXY = [], vibration = [];
+    const fish1XY = [], fish2XY = [], fish3XY = [], referenceXY = [], vibration = [];
     const maxLen = canvas.width;
     let bleDevice = null;
     let bleCharacteristic = null;
@@ -202,7 +202,7 @@
       drawLine(fish1XY, '#e4b580', 0, 0 * h + topMargin, yMax[0], h, "fish1XY");
       drawLine(fish2XY, '#a1daa8', 0, 1 * h + topMargin, yMax[1], h, "fish2XY");
       drawLine(fish3XY, '#84bced', 0, 2 * h + topMargin, yMax[2], h, "fish3XY");
-      drawLine(waveXY,  '#c36363', 0, 3 * h + topMargin, yMax[3], h, "waveXY");
+      drawLine(referenceXY,  '#c36363', 0, 3 * h + topMargin, yMax[3], h, "referenceXY");
       drawLineVibration(vibration, '#aaaaaa', 0, 4 * h + topMargin, yMax[4], h, "vibration");
 
       pointsCountSpan.textContent = fish1XY.length;
@@ -267,7 +267,7 @@
       const parts = value.split(',');
       if (parts.length === 5) {
         try {
-          const wave = parseFloat(parts[0]);
+          const reference = parseFloat(parts[0]);
           const f1 = parseFloat(parts[1]);
           const f2 = parseFloat(parts[2]);
           const f3 = parseFloat(parts[3]);
@@ -276,7 +276,7 @@
           pushData(fish1XY, f1);
           pushData(fish2XY, f2);
           pushData(fish3XY, f3);
-          pushData(waveXY, wave);
+          pushData(referenceXY, reference);
           pushData(vibration, vib);
 
           let mismatchCount = 0;
@@ -284,9 +284,9 @@
           const requiredFishTriggers = 2;
           const vibrationThreshold = 20;
 
-          if (Math.abs(f1 - wave) > diffThreshold) mismatchCount++;
-          if (Math.abs(f2 - wave) > diffThreshold) mismatchCount++;
-          if (Math.abs(f3 - wave) > diffThreshold) mismatchCount++;
+          if (Math.abs(f1 - reference) > diffThreshold) mismatchCount++;
+          if (Math.abs(f2 - reference) > diffThreshold) mismatchCount++;
+          if (Math.abs(f3 - reference) > diffThreshold) mismatchCount++;
 
           if (mismatchCount >= requiredFishTriggers && vib > vibrationThreshold) {
             motorTriggerCount++;
