@@ -2,8 +2,8 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>ResPOND Gentle Flow</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ResPOND Enhanced</title>
   <style>
     html, body {
       margin: 0;
@@ -98,31 +98,14 @@ window.addEventListener('resize', () => {
 
 let time = 0;
 let ripples = [], bubbles = [], pellets = [];
-let fishParticles = [];
-let fishCount = 3;
-let motorActive = false;
-let motorTriggerCount = 0;
-let lastTrigger = false;
+let fishPositions = [
+  { x: canvas.width * 0.25, y: canvas.height * 0.65 },
+  { x: canvas.width * 0.5, y: canvas.height * 0.65 },
+  { x: canvas.width * 0.75, y: canvas.height * 0.65 }
+];
 let waveValue = 0, fishValues = [0,0,0], lastFishValues = [0,0,0], vibration = 0;
+let motorTriggerCount = 0, lastTrigger = false, motorActive = false;
 const diffThreshold = 4.0, vibrationThreshold = 20, requiredFishTriggers = 2;
-
-// Initialize fish particle systems
-for (let i = 0; i < fishCount; i++) {
-  let fish = [];
-  let centerX = canvas.width * (0.25 + 0.25 * i);
-  let centerY = canvas.height * 0.6;
-  for (let j = 0; j < 30; j++) {
-    fish.push({
-      angle: Math.random() * 2 * Math.PI,
-      radius: 8 + Math.random() * 8,
-      speed: 0.002 + Math.random() * 0.001,
-      alpha: 0.3 + Math.random() * 0.7,
-      centerX,
-      centerY
-    });
-  }
-  fishParticles.push(fish);
-}
 
 let bleDevice = null;
 let bleCharacteristic = null;
@@ -171,7 +154,7 @@ function handleData(event) {
     for (let i = 0; i < 3; i++) {
       fishValues[i] = parseFloat(parts[i + 1]);
       if (Math.abs(fishValues[i] - lastFishValues[i]) > 0.5) {
-        ripples.push({ x: fishParticles[i][0].centerX, y: fishParticles[i][0].centerY, r: 5, alpha: 1 });
+        ripples.push({ x: fishPositions[i].x, y: fishPositions[i].y, r: 5, alpha: 1 });
       }
       lastFishValues[i] = fishValues[i];
     }
@@ -196,8 +179,8 @@ function drawWaves() {
   const pointsPerLine = 60;
   for (let j = 0; j < lines; j++) {
     let yBase = canvas.height * 0.4 + j * 10;
-    let alpha = 0.1 + 0.4 * (j / lines);
-    let dotSize = 0.5 + 1.0 * (1 - j / lines);
+    let alpha = (j === lines - 1) ? 0.9 : 0.15 + 0.25 * (j / lines);
+    let dotSize = 0.6 + 1.2 * (1 - j / lines);
     for (let i = 0; i < pointsPerLine; i++) {
       let x = (i / pointsPerLine) * canvas.width;
       let y = yBase + Math.sin((i * 0.3) + time * 0.3 + j * 0.5) * 4;
@@ -209,29 +192,37 @@ function drawWaves() {
   }
 }
 
-function drawFishParticles() {
-  fishParticles.forEach(fish => {
-    fish.forEach(p => {
-      let x = p.centerX + Math.cos(p.angle) * p.radius;
-      let y = p.centerY + Math.sin(p.angle) * p.radius;
-      ctx.beginPath();
-      ctx.arc(x, y, 2, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(255,255,255,${p.alpha})`;
-      ctx.fill();
-      p.angle += p.speed;
-    });
+function drawFish() {
+  fishPositions.forEach((p, i) => {
+    let offsetX = Math.sin(time * 0.5 + i) * 5;
+    let offsetY = Math.cos(time * 0.3 + i) * 3;
+    let x = p.x + offsetX;
+    let y = p.y + offsetY;
+    ctx.beginPath();
+    ctx.moveTo(x - 20, y);
+    ctx.bezierCurveTo(x - 10, y - 10, x + 10, y - 10, x + 20, y);
+    ctx.bezierCurveTo(x + 10, y + 10, x - 10, y + 10, x - 20, y);
+    ctx.fillStyle = "rgba(255,255,255,0.8)";
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(x - 20, y);
+    ctx.lineTo(x - 30, y - 8);
+    ctx.moveTo(x - 20, y);
+    ctx.lineTo(x - 30, y + 8);
+    ctx.strokeStyle = "rgba(255,255,255,0.8)";
+    ctx.stroke();
   });
 }
 
 function animate() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
   drawWaves();
-  drawFishParticles();
+  drawFish();
   ripples.forEach((r, i) => {
     ctx.beginPath();
     ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2);
     ctx.strokeStyle = `rgba(220,255,240,${r.alpha})`;
-    ctx.lineWidth = 1.5;
+    ctx.lineWidth = 1.2;
     ctx.stroke();
     r.r += 0.5;
     r.alpha -= 0.005;
@@ -244,7 +235,7 @@ function animate() {
     if (!p.hit && p.y >= canvas.height * 0.5) {
       p.hit = true;
       for (let j = 0; j < 3; j++) {
-        bubbles.push({ x: p.x + Math.random()*20-10, y: canvas.height * 0.5, r: 3+Math.random()*3, alpha: 1, speed: 0.5+Math.random()*0.5 });
+        bubbles.push({ x: p.x + Math.random()*20-10, y: canvas.height * 0.5, r: 6+Math.random()*8, alpha: 0.3+Math.random()*0.4, speed: 0.5+Math.random()*0.5 });
       }
     }
     if (!p.hit) {
@@ -260,11 +251,11 @@ function animate() {
   });
   bubbles.forEach((b, i) => {
     b.y -= b.speed;
-    b.alpha -= 0.005;
+    b.alpha -= 0.003;
     ctx.beginPath();
     ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-    ctx.strokeStyle = `rgba(255,255,255,${b.alpha})`;
-    ctx.stroke();
+    ctx.fillStyle = `rgba(255,255,255,${b.alpha})`;
+    ctx.fill();
     if (b.alpha <= 0) bubbles.splice(i, 1);
   });
   time += 0.015;
