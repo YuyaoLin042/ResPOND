@@ -3,212 +3,285 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>ResPOND Pond Visualizer</title>
+  <title>ResPOND BLE Visualization</title>
   <style>
-    body { margin: 0; overflow: hidden; background-color: #087a5e; }
-    canvas { display: block; }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: #087a5e;
+      font-family: "Calibri", sans-serif;
+      color: #ffffff;
+      overflow: hidden;
+      height: 100vh;
+    }
+
+    #container {
+      display: flex;
+      flex-direction: row;
+      width: 100%;
+      height: 100%;
+    }
+
+    #sidebar {
+      flex: 0 0 30%;
+      background: #111;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-right: 3px solid #369e8e;
+      padding: 20px;
+      box-sizing: border-box;
+    }
+
+    #sidebar h1 {
+      font-size: 36px;
+      font-weight: bold;
+      color: #ffffff;
+      text-align: center;
+      margin-top: 10px;
+      margin-bottom: 10px;
+    }
+
+    .authorName {
+      font-size: 16px;
+      color: #ffffff;
+      margin-bottom: 20px;
+      text-align: center;
+      width: 100%;
+    }
+
+    .buttonBar {
+      margin-bottom: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      width: 80%;
+    }
+
+    button {
+      padding: 8px 14px;
+      font-size: 12px;
+      background: #1976d2;
+      color: #ffffff;
+      border: none;
+      border-radius: 15px;
+      cursor: pointer;
+      width: 100%;
+    }
+
+    button:hover {
+      background: #1565c0;
+    }
+
+    .infoText {
+      font-size: 16px;
+      margin-bottom: 2px;
+      line-height: 1.2;
+      color: gray;
+      text-align: center;
+      width: 100%;
+    }
+
+    #main {
+      flex: 0 0 70%;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      justify-content: flex-start;
+      padding: 10px;
+      box-sizing: border-box;
+    }
+
+    .canvasWrapper {
+      width: 95%;
+      height: 100%;
+      padding-right: 20px;
+      box-sizing: border-box;
+    }
+
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      background: #087a5e;
+    }
   </style>
 </head>
 <body>
-<canvas id="pondCanvas"></canvas>
+  <div id="container">
+    <div id="sidebar">
+      <h1>ResPOND</h1>
+      <p class="authorName">Yuyao Lin</p>
+      <div class="buttonBar">
+        <button id="bleButton">Connect Device</button>
+        <button id="fullscreenButton">Fullscreen</button>
+      </div>
+      <p class="infoText">Connected points: <span id="pointsCount">0</span></p>
+      <p class="infoText">Motor Trigger Count: <span id="motorCount">0</span></p>
+    </div>
 
-<script>
-const canvas = document.getElementById("pondCanvas");
-const ctx = canvas.getContext("2d");
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+    <div id="main">
+      <div class="canvasWrapper">
+        <canvas id="pondCanvas"></canvas>
+      </div>
+    </div>
+  </div>
 
-// Data
-let waveValue = 0;
-let fishValues = [0, 0, 0];
-let lastFishValues = [0, 0, 0];
-let vibration = 0;
+  <script>
+    const canvas = document.getElementById("pondCanvas");
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth * 0.7;
+    canvas.height = window.innerHeight;
 
-const diffThreshold = 4.0;
-const requiredTriggers = 2;
-const vibrationThreshold = 20;
+    const fishY = canvas.height * 0.8;
+    const fishPositions = [canvas.width * 0.2, canvas.width * 0.5, canvas.width * 0.8];
+    const waveColor = "#075e4b";
+    const fishColor = "rgba(255,255,255,0.6)";
+    const backgroundColor = "#087a5e";
 
-const sensorPositions = [
-  { x: canvas.width * 0.3, y: canvas.height * 0.7 },
-  { x: canvas.width * 0.5, y: canvas.height * 0.7 },
-  { x: canvas.width * 0.7, y: canvas.height * 0.7 }
-];
+    let wavePhase = 0;
+    let bleDevice = null;
+    let bleCharacteristic = null;
+    let isFullscreen = false;
+    let motorTriggerCount = 0;
 
-let ripples = [], pellets = [], bubbles = [];
+    function drawFish(x, y) {
+      ctx.strokeStyle = fishColor;
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.moveTo(x - 10, y);
+      ctx.quadraticCurveTo(x, y - 8, x + 10, y);
+      ctx.quadraticCurveTo(x, y + 8, x - 10, y);
+      ctx.stroke();
 
-let waterHeight = canvas.height * 0.7;
-let triggered = false;
-let lastTriggered = false;
-let phase = 0;
+      ctx.beginPath();
+      ctx.moveTo(x - 10, y);
+      ctx.lineTo(x - 16, y - 5);
+      ctx.moveTo(x - 10, y);
+      ctx.lineTo(x - 16, y + 5);
+      ctx.stroke();
+    }
 
-// Visual Classes
-class Ripple {
-  constructor(x, y) {
-    this.x = x; this.y = y;
-    this.radius = 2;
-    this.alpha = 1.0;
-  }
-  update() { this.radius += 1.2; this.alpha -= 0.015; }
-  draw() {
-    ctx.beginPath();
-    ctx.strokeStyle = `rgba(240,255,255,${this.alpha})`;
-    ctx.lineWidth = 2;
-    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-}
+    function drawLake() {
+      ctx.fillStyle = backgroundColor;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-class Pellet {
-  constructor(x) {
-    this.x = x; this.y = -10;
-    this.alpha = 1.0;
-    this.hit = false;
-  }
-  update() {
-    if (!this.hit) {
-      this.y += 3;
-      if (this.y >= waterHeight) {
-        this.hit = true;
-        for (let i = 0; i < Math.random() * 4 + 3; i++) {
-          bubbles.push(new Bubble(this.x + Math.random() * 20 - 10, waterHeight));
+      wavePhase += 0.02;
+      const waveHeight = 20;
+      const baseY = canvas.height * 0.7;
+
+      ctx.beginPath();
+      ctx.moveTo(0, baseY);
+      for (let x = 0; x <= canvas.width; x += 10) {
+        const y = baseY + Math.sin(x * 0.02 + wavePhase) * waveHeight * 0.3;
+        ctx.lineTo(x, y);
+      }
+      ctx.lineTo(canvas.width, canvas.height);
+      ctx.lineTo(0, canvas.height);
+      ctx.closePath();
+      ctx.fillStyle = waveColor;
+      ctx.fill();
+    }
+
+    function draw() {
+      drawLake();
+      fishPositions.forEach(x => drawFish(x, canvas.height * 0.78));
+      requestAnimationFrame(draw);
+    }
+
+    // BLE connection
+    const bleButton = document.getElementById('bleButton');
+    const fullscreenButton = document.getElementById('fullscreenButton');
+    const pointsCountSpan = document.getElementById('pointsCount');
+    const motorCountSpan = document.getElementById('motorCount');
+    const container = document.getElementById('container');
+
+    const fish1XY = [], fish2XY = [], fish3XY = [], referenceXY = [], vibration = [];
+    const maxLen = 300;
+    const yMax = [20, 20, 20, 20, 2000];
+
+    function pushData(arr, val) {
+      arr.push(val);
+      if (arr.length > maxLen) arr.shift();
+    }
+
+    bleButton.addEventListener('click', async () => {
+      if (!bleDevice) {
+        try {
+          const device = await navigator.bluetooth.requestDevice({
+            filters: [{ services: ['0000ffe0-0000-1000-8000-00805f9b34fb'] }]
+          });
+          bleDevice = device;
+          const server = await device.gatt.connect();
+          const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
+          bleCharacteristic = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
+          await bleCharacteristic.startNotifications();
+          bleCharacteristic.addEventListener('characteristicvaluechanged', handleData);
+          bleButton.textContent = 'Disconnect Device';
+        } catch (e) {
+          alert("BLE connection failed: " + e);
+        }
+      } else {
+        if (bleDevice.gatt.connected) bleDevice.gatt.disconnect();
+        bleDevice = null;
+        bleCharacteristic = null;
+        bleButton.textContent = 'Connect Device';
+      }
+    });
+
+    function handleData(event) {
+      const value = new TextDecoder().decode(event.target.value).trim();
+      const parts = value.split(',');
+      if (parts.length === 5) {
+        try {
+          const reference = parseFloat(parts[0]);
+          const f1 = parseFloat(parts[1]);
+          const f2 = parseFloat(parts[2]);
+          const f3 = parseFloat(parts[3]);
+          const vib = parseFloat(parts[4]);
+
+          pushData(fish1XY, f1);
+          pushData(fish2XY, f2);
+          pushData(fish3XY, f3);
+          pushData(referenceXY, reference);
+          pushData(vibration, vib);
+
+          let mismatchCount = 0;
+          const diffThreshold = 4.0;
+          const requiredFishTriggers = 2;
+          const vibrationThreshold = 20;
+
+          if (Math.abs(f1 - reference) > diffThreshold) mismatchCount++;
+          if (Math.abs(f2 - reference) > diffThreshold) mismatchCount++;
+          if (Math.abs(f3 - reference) > diffThreshold) mismatchCount++;
+
+          if (mismatchCount >= requiredFishTriggers && vib > vibrationThreshold) {
+            motorTriggerCount++;
+            console.log("⚠️ Motor Triggered! Count: " + motorTriggerCount);
+          }
+
+          pointsCountSpan.textContent = fish1XY.length;
+          motorCountSpan.textContent = motorTriggerCount;
+
+        } catch (e) {
+          console.log("Parse error", e);
         }
       }
-    } else {
-      this.alpha -= 0.02;
     }
-  }
-  draw() {
-    ctx.fillStyle = `rgba(255,255,255,${this.alpha})`;
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, 6, 0, Math.PI * 2);
-    ctx.fill();
-  }
-  isDone() { return this.alpha <= 0; }
-}
 
-class Bubble {
-  constructor(x, y) {
-    this.x = x; this.y = y;
-    this.size = Math.random() * 6 + 4;
-    this.speed = Math.random() * 0.5 + 0.5;
-    this.alpha = 0.8;
-  }
-  update() {
-    this.y -= this.speed;
-    this.alpha -= 0.01;
-  }
-  draw() {
-    ctx.strokeStyle = `rgba(255,255,255,${this.alpha})`;
-    ctx.beginPath();
-    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-    ctx.stroke();
-  }
-  isDone() { return this.alpha <= 0; }
-}
-
-// Drawing
-function drawLakeSurface() {
-  phase += 0.05;
-  waterHeight += (triggered ? -1 : 1) * 0.5;
-  waterHeight = Math.max(canvas.height * 0.6, Math.min(canvas.height * 0.7, waterHeight));
-  ctx.beginPath();
-  ctx.moveTo(0, waterHeight);
-  for (let x = 0; x <= canvas.width; x++) {
-    let y = waterHeight + 5 * Math.sin(0.02 * x + phase);
-    ctx.lineTo(x, y);
-  }
-  ctx.lineTo(canvas.width, canvas.height);
-  ctx.lineTo(0, canvas.height);
-  ctx.closePath();
-  ctx.fillStyle = "#0c5a46";
-  ctx.fill();
-}
-
-function drawFish(x, y) {
-  ctx.strokeStyle = "#ffffff";
-  ctx.beginPath();
-  ctx.moveTo(x - 20, y);
-  ctx.bezierCurveTo(x - 10, y - 10, x + 10, y - 10, x + 20, y);
-  ctx.bezierCurveTo(x + 10, y + 10, x - 10, y + 10, x - 20, y);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(x - 20, y);
-  ctx.lineTo(x - 30, y - 8);
-  ctx.moveTo(x - 20, y);
-  ctx.lineTo(x - 30, y + 8);
-  ctx.stroke();
-}
-
-function animate() {
-  ctx.fillStyle = "#087a5e";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  drawLakeSurface();
-
-  for (let i = 0; i < sensorPositions.length; i++) {
-    drawFish(sensorPositions[i].x, waterHeight + 40 + 10 * Math.sin(phase + i));
-  }
-
-  ripples.forEach(r => r.update());
-  ripples.forEach(r => r.draw());
-  ripples = ripples.filter(r => r.alpha > 0);
-
-  pellets.forEach(p => p.update());
-  pellets.forEach(p => p.draw());
-  pellets = pellets.filter(p => !p.isDone());
-
-  bubbles.forEach(b => b.update());
-  bubbles.forEach(b => b.draw());
-  bubbles = bubbles.filter(b => !b.isDone());
-
-  requestAnimationFrame(animate);
-}
-
-function handleSerialInput(str) {
-  const parts = str.trim().split(",");
-  if (parts.length === 5) {
-    waveValue = parseFloat(parts[0]);
-    for (let i = 0; i < 3; i++) {
-      let val = parseFloat(parts[i + 1]);
-      if (Math.abs(val - lastFishValues[i]) > 0.5) {
-        ripples.push(new Ripple(sensorPositions[i].x, sensorPositions[i].y));
+    fullscreenButton.addEventListener('click', () => {
+      if (!isFullscreen) {
+        container.requestFullscreen();
+        fullscreenButton.textContent = 'Exit Fullscreen';
+      } else {
+        document.exitFullscreen();
+        fullscreenButton.textContent = 'Fullscreen';
       }
-      fishValues[i] = val;
-      lastFishValues[i] = val;
-    }
-    vibration = parseFloat(parts[4]);
-
-    let mismatch = 0;
-    for (let i = 0; i < 3; i++) {
-      if (Math.abs(fishValues[i] - waveValue) > diffThreshold) mismatch++;
-    }
-    let newTriggered = (mismatch >= requiredTriggers && vibration > vibrationThreshold);
-    if (newTriggered && !lastTriggered) {
-      for (let i = 0; i < 6; i++) {
-        pellets.push(new Pellet(Math.random() * canvas.width));
-      }
-    }
-    triggered = newTriggered;
-    lastTriggered = newTriggered;
-  }
-}
-
-// Web Bluetooth connection
-navigator.bluetooth.requestDevice({
-  filters: [{ services: ['0000ffe0-0000-1000-8000-00805f9b34fb'] }]
-}).then(device => device.gatt.connect())
-  .then(server => server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb'))
-  .then(service => service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb'))
-  .then(characteristic => {
-    characteristic.startNotifications();
-    characteristic.addEventListener('characteristicvaluechanged', event => {
-      const decoder = new TextDecoder();
-      const str = decoder.decode(event.target.value);
-      handleSerialInput(str);
+      isFullscreen = !isFullscreen;
     });
-  })
-  .catch(error => console.error("BLE Error:", error));
 
-animate();
-</script>
+    draw();
+  </script>
 </body>
 </html>
