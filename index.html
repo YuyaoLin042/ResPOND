@@ -99,7 +99,7 @@
         pellets[i].display();
         if (pellets[i].hitWater) {
           for (let j = 0; j < 2; j++) {
-            bubbles.push(new Bubble(pellets[i].pos.x, height * 0.65));
+            bubbles.push(new Bubble(pellets[i].pos.x, height * 0.45));
           }
         }
         if (pellets[i].isDone()) pellets.splice(i, 1);
@@ -117,7 +117,7 @@
       fill(255, 255, 255, 30);
       for (let x = 0; x < width; x += 10) {
         for (let y = 0; y < 30; y++) {
-          let yy = height * 0.65 + 8 * sin(x * 0.01 + wavePhase + y * 0.2);
+          let yy = height * 0.35 + 8 * sin(x * 0.01 + wavePhase + y * 0.2);
           let alpha = map(y, 0, 29, 80, 10);
           fill(255, alpha);
           ellipse(x, yy + y * 6, 4 - y * 0.08);
@@ -184,7 +184,7 @@
       update() {
         if (!this.hitWater) this.pos.y += 1.2;
         else this.alpha -= 2;
-        if (this.pos.y > height * 0.65) this.hitWater = true;
+        if (this.pos.y > height * 0.35) this.hitWater = true;
       }
       display() {
         fill(255, this.alpha);
