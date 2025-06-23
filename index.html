@@ -3,92 +3,255 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>ResPOND · Artistic Wave</title>
+  <title>ResPOND Artistic</title>
   <style>
     html, body {
       margin: 0;
       padding: 0;
-      background: linear-gradient(to top, #0277bd, #0d47a1);
+      background: #000;
       overflow: hidden;
       height: 100vh;
+      font-family: "Helvetica Neue", sans-serif;
     }
-
-    canvas {
-      display: block;
+    #container {
+      display: flex;
+      width: 100%;
+      height: 100%;
     }
-
-    #overlay {
-      position: absolute;
-      top: 30px;
-      left: 40px;
-      color: white;
-      font-family: 'Helvetica Neue', sans-serif;
+    #sidebar {
+      width: 30%;
+      background: #111;
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      border-right: 3px solid #369e8e;
+      padding: 20px;
+      box-sizing: border-box;
     }
-
-    #overlay h1 {
+    #sidebar h1 {
       font-size: 36px;
-      margin: 0;
+      margin: 10px 0;
     }
-
-    #overlay p {
+    #sidebar p {
       margin: 5px 0;
       font-size: 14px;
       opacity: 0.8;
     }
+    .buttonBar {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      margin-top: 20px;
+    }
+    button {
+      padding: 10px 20px;
+      font-size: 14px;
+      background: #2e73f7;
+      border: none;
+      border-radius: 20px;
+      color: #fff;
+      cursor: pointer;
+    }
+    #main {
+      width: 70%;
+    }
+    canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+      background: linear-gradient(to top, #0277bd, #0d47a1);
+    }
+    .infoText {
+      margin-top: 10px;
+      font-size: 12px;
+      opacity: 0.7;
+    }
   </style>
 </head>
 <body>
-  <canvas id="waveCanvas"></canvas>
-  <div id="overlay">
+<div id="container">
+  <div id="sidebar">
     <h1>ResPOND</h1>
     <p>Visualizing calm in motion</p>
+    <div class="buttonBar">
+      <button id="bleButton">Connect Device</button>
+      <button id="fullscreenButton">Fullscreen</button>
+    </div>
+    <p class="infoText">Connected points: <span id="pointsCount">0</span></p>
+    <p class="infoText">Motor Trigger Count: <span id="motorCount">0</span></p>
   </div>
+  <div id="main">
+    <canvas id="pondCanvas"></canvas>
+  </div>
+</div>
 
-  <script>
-    const canvas = document.getElementById("waveCanvas");
-    const ctx = canvas.getContext("2d");
+<script>
+const canvas = document.getElementById("pondCanvas");
+const ctx = canvas.getContext("2d");
+canvas.width = window.innerWidth * 0.7;
+canvas.height = window.innerHeight;
 
-    function resizeCanvas() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+window.addEventListener('resize', () => {
+  canvas.width = window.innerWidth * 0.7;
+  canvas.height = window.innerHeight;
+});
+
+let time = 0;
+let ripples = [];
+let bubbles = [];
+let fishPositions = [
+  { x: canvas.width * 0.25, y: canvas.height * 0.6 },
+  { x: canvas.width * 0.5, y: canvas.height * 0.6 },
+  { x: canvas.width * 0.75, y: canvas.height * 0.6 }
+];
+
+// BLE placeholders
+let waveValue = 0;
+let fishValues = [0, 0, 0];
+let vibration = 0;
+let motorTriggerCount = 0;
+let lastTrigger = false;
+const diffThreshold = 4.0;
+const vibrationThreshold = 20;
+const requiredFishTriggers = 2;
+
+// BLE setup
+let bleDevice = null;
+let bleCharacteristic = null;
+const bleButton = document.getElementById('bleButton');
+const fullscreenButton = document.getElementById('fullscreenButton');
+const pointsCountSpan = document.getElementById('pointsCount');
+const motorCountSpan = document.getElementById('motorCount');
+
+bleButton.onclick = async () => {
+  if (!bleDevice) {
+    try {
+      const device = await navigator.bluetooth.requestDevice({
+        filters: [{ services: ['0000ffe0-0000-1000-8000-00805f9b34fb'] }]
+      });
+      bleDevice = device;
+      const server = await device.gatt.connect();
+      const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
+      bleCharacteristic = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
+      await bleCharacteristic.startNotifications();
+      bleCharacteristic.addEventListener('characteristicvaluechanged', handleData);
+      bleButton.textContent = 'Disconnect Device';
+    } catch (e) {
+      alert('BLE Connection Failed: ' + e);
     }
+  } else {
+    if (bleDevice.gatt.connected) bleDevice.gatt.disconnect();
+    bleDevice = null;
+    bleCharacteristic = null;
+    bleButton.textContent = 'Connect Device';
+  }
+};
 
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
+fullscreenButton.onclick = () => {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen();
+    fullscreenButton.textContent = 'Exit Fullscreen';
+  } else {
+    document.exitFullscreen();
+    fullscreenButton.textContent = 'Fullscreen';
+  }
+};
 
-    const lines = 20;               // 行数
-    const pointsPerLine = 80;       // 每行点数
-    const waveAmplitude = 20;
-    const waveLength = 100;
-    const dotSpacing = 12;
-    const waveSpeed = 0.02;
+function handleData(event) {
+  const value = new TextDecoder().decode(event.target.value).trim();
+  const parts = value.split(',');
+  if (parts.length === 5) {
+    waveValue = parseFloat(parts[0]);
+    for (let i = 0; i < 3; i++) {
+      fishValues[i] = parseFloat(parts[i + 1]);
+      ripples.push({ x: fishPositions[i].x, y: fishPositions[i].y, r: 0, alpha: 1 });
+    }
+    vibration = parseInt(parts[4]);
 
-    let time = 0;
-
-    function draw() {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      for (let j = 0; j < lines; j++) {
-        let yBase = canvas.height * 0.3 + j * 15;
-        let alpha = 0.4 + 0.6 * (j / lines);
-        let dotSize = 1 + 1.5 * (j / lines);
-
-        for (let i = 0; i < pointsPerLine; i++) {
-          let x = (i / pointsPerLine) * canvas.width;
-          let y = yBase + Math.sin((i * 0.3) + time + j * 0.4) * waveAmplitude;
-
-          ctx.beginPath();
-          ctx.arc(x, y, dotSize, 0, Math.PI * 2);
-          ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
-          ctx.fill();
-        }
+    let mismatchCount = fishValues.filter(v => Math.abs(v - waveValue) > diffThreshold).length;
+    let trigger = (mismatchCount >= requiredFishTriggers && vibration > vibrationThreshold);
+    if (trigger && !lastTrigger) {
+      for (let i = 0; i < 6; i++) {
+        bubbles.push({ x: Math.random() * canvas.width, y: canvas.height, r: 4, alpha: 1, speed: 1 + Math.random() });
       }
-
-      time += waveSpeed;
-      requestAnimationFrame(draw);
+      motorTriggerCount++;
     }
+    lastTrigger = trigger;
 
-    draw();
-  </script>
+    pointsCountSpan.textContent = fishValues.length;
+    motorCountSpan.textContent = motorTriggerCount;
+  }
+}
+
+function drawWaves() {
+  const lines = 20;
+  const pointsPerLine = 80;
+  for (let j = 0; j < lines; j++) {
+    let yBase = canvas.height * 0.3 + j * 15;
+    let alpha = 0.3 + 0.5 * (j / lines);
+    let dotSize = 1 + 1.5 * (j / lines);
+    for (let i = 0; i < pointsPerLine; i++) {
+      let x = (i / pointsPerLine) * canvas.width;
+      let y = yBase + Math.sin((i * 0.3) + time + j * 0.5) * 20;
+      ctx.beginPath();
+      ctx.arc(x, y, dotSize, 0, Math.PI * 2);
+      ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+      ctx.fill();
+    }
+  }
+}
+
+function drawRipples() {
+  for (let i = ripples.length - 1; i >= 0; i--) {
+    let ripple = ripples[i];
+    ctx.beginPath();
+    ctx.arc(ripple.x, ripple.y, ripple.r, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(255,255,255,${ripple.alpha})`;
+    ctx.lineWidth = 1;
+    ctx.stroke();
+    ripple.r += 0.5;
+    ripple.alpha -= 0.005;
+    if (ripple.alpha <= 0) ripples.splice(i, 1);
+  }
+}
+
+function drawBubbles() {
+  for (let i = bubbles.length - 1; i >= 0; i--) {
+    let b = bubbles[i];
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
+    ctx.strokeStyle = `rgba(255,255,255,${b.alpha})`;
+    ctx.stroke();
+    b.y -= b.speed;
+    b.alpha -= 0.003;
+    if (b.alpha <= 0) bubbles.splice(i, 1);
+  }
+}
+
+function drawFish() {
+  fishPositions.forEach(p => {
+    ctx.beginPath();
+    ctx.moveTo(p.x - 10, p.y);
+    ctx.bezierCurveTo(p.x - 5, p.y - 5, p.x + 5, p.y - 5, p.x + 10, p.y);
+    ctx.bezierCurveTo(p.x + 5, p.y + 5, p.x - 5, p.y + 5, p.x - 10, p.y);
+    ctx.strokeStyle = '#d3f5e6';
+    ctx.stroke();
+  });
+}
+
+function animate() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawWaves();
+  drawFish();
+  drawRipples();
+  drawBubbles();
+  time += 0.02;
+  requestAnimationFrame(animate);
+}
+
+animate();
+</script>
 </body>
 </html>
