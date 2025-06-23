@@ -3,265 +3,92 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>ResPOND Data Visualizer</title>
+  <title>ResPOND · Artistic Wave</title>
   <style>
     html, body {
       margin: 0;
       padding: 0;
-      font-family: "Segoe UI", sans-serif;
-      background-color: #000;
+      background: linear-gradient(to top, #0277bd, #0d47a1);
       overflow: hidden;
       height: 100vh;
     }
-    #container {
-      display: flex;
-      width: 100vw;
-      height: 100vh;
-    }
-    #sidebar {
-      flex: 0 0 26%;
-      background: #0d0d0d;
-      color: #ffffff;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      border-right: 3px solid #369e8e;
-      padding: 40px 20px;
-      box-sizing: border-box;
-    }
-    h1 {
-      font-size: 36px;
-      margin-bottom: 5px;
-    }
-    .authorName {
-      font-size: 16px;
-      color: #cccccc;
-      margin-bottom: 20px;
-    }
-    .buttonBar {
-      margin-bottom: 30px;
-      width: 100%;
-    }
-    button {
-      padding: 10px 20px;
-      font-size: 14px;
-      background: #2c6fff;
-      color: #fff;
-      border: none;
-      border-radius: 20px;
-      cursor: pointer;
-      width: 100%;
-      margin-bottom: 10px;
-      transition: background 0.3s;
-    }
-    button:hover {
-      background: #1e4fbf;
-    }
-    .infoText {
-      font-size: 14px;
-      color: #aaaaaa;
-      margin: 8px 0;
-    }
-    #main {
-      flex: 1;
-      position: relative;
-    }
+
     canvas {
-      width: 100%;
-      height: 100%;
       display: block;
-      background: linear-gradient(to top, #00243e, #087a5e);
+    }
+
+    #overlay {
+      position: absolute;
+      top: 30px;
+      left: 40px;
+      color: white;
+      font-family: 'Helvetica Neue', sans-serif;
+    }
+
+    #overlay h1 {
+      font-size: 36px;
+      margin: 0;
+    }
+
+    #overlay p {
+      margin: 5px 0;
+      font-size: 14px;
+      opacity: 0.8;
     }
   </style>
 </head>
 <body>
-  <div id="container">
-    <div id="sidebar">
-      <h1>ResPOND</h1>
-      <p class="authorName">Yuyao Lin</p>
-      <div class="buttonBar">
-        <button id="bleButton">Connect Device</button>
-        <button id="fullscreenButton">Fullscreen</button>
-      </div>
-      <p class="infoText">Connected points: <span id="pointsCount">0</span></p>
-      <p class="infoText">Motor Trigger Count: <span id="motorCount">0</span></p>
-    </div>
-    <div id="main">
-      <canvas id="pondCanvas"></canvas>
-    </div>
+  <canvas id="waveCanvas"></canvas>
+  <div id="overlay">
+    <h1>ResPOND</h1>
+    <p>Visualizing calm in motion</p>
   </div>
 
   <script>
-    const canvas = document.getElementById("pondCanvas");
+    const canvas = document.getElementById("waveCanvas");
     const ctx = canvas.getContext("2d");
-    canvas.width = window.innerWidth * 0.74;
-    canvas.height = window.innerHeight;
 
-    let waveValue = 0;
-    let lastFishValues = [0, 0, 0];
-    let fishValues = [0, 0, 0];
-    let vibration = 0;
-    let rippleArray = [];
-    let motorTriggered = false;
-    let triggerCount = 0;
-    const diffThreshold = 4.0;
-    const requiredFishTriggers = 2;
-    const vibrationThreshold = 20;
-    const sensorPositions = [
-      { x: canvas.width * 0.25, y: canvas.height * 0.65 },
-      { x: canvas.width * 0.5, y: canvas.height * 0.65 },
-      { x: canvas.width * 0.75, y: canvas.height * 0.65 }
-    ];
-
-    class Ripple {
-      constructor(x, y) {
-        this.x = x;
-        this.y = y;
-        this.radius = 5;
-        this.alpha = 1.0;
-      }
-      update() {
-        this.radius += 0.8;
-        this.alpha -= 0.01;
-      }
-      draw() {
-        ctx.strokeStyle = `rgba(255, 255, 255, ${this.alpha})`;
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-        ctx.stroke();
-      }
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
     }
 
-    function drawFish(x, y) {
-      ctx.strokeStyle = "#cceee0";
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(x - 12, y);
-      ctx.quadraticCurveTo(x, y - 6, x + 12, y);
-      ctx.quadraticCurveTo(x, y + 6, x - 12, y);
-      ctx.moveTo(x - 12, y);
-      ctx.lineTo(x - 18, y - 5);
-      ctx.moveTo(x - 12, y);
-      ctx.lineTo(x - 18, y + 5);
-      ctx.stroke();
-    }
+    resizeCanvas();
+    window.addEventListener('resize', resizeCanvas);
 
-    let wavePhase = 0;
-    function drawWave() {
-      wavePhase += 0.007;
-      ctx.fillStyle = "#065544";
-      ctx.beginPath();
-      ctx.moveTo(0, canvas.height);
-      for (let x = 0; x <= canvas.width; x += 15) {
-        let y = canvas.height * 0.65 + Math.sin((x * 0.02) + wavePhase * 2) * 8;
-        ctx.lineTo(x, y);
-      }
-      ctx.lineTo(canvas.width, canvas.height);
-      ctx.closePath();
-      ctx.fill();
-    }
+    const lines = 20;               // 行数
+    const pointsPerLine = 80;       // 每行点数
+    const waveAmplitude = 20;
+    const waveLength = 100;
+    const dotSpacing = 12;
+    const waveSpeed = 0.02;
 
-    function drawScene() {
+    let time = 0;
+
+    function draw() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      // Water
-      drawWave();
+      for (let j = 0; j < lines; j++) {
+        let yBase = canvas.height * 0.3 + j * 15;
+        let alpha = 0.4 + 0.6 * (j / lines);
+        let dotSize = 1 + 1.5 * (j / lines);
 
-      // Fish
-      for (let i = 0; i < sensorPositions.length; i++) {
-        let x = sensorPositions[i].x;
-        let y = sensorPositions[i].y + Math.sin(Date.now() * 0.002 + i) * 5;
-        drawFish(x, y);
+        for (let i = 0; i < pointsPerLine; i++) {
+          let x = (i / pointsPerLine) * canvas.width;
+          let y = yBase + Math.sin((i * 0.3) + time + j * 0.4) * waveAmplitude;
+
+          ctx.beginPath();
+          ctx.arc(x, y, dotSize, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(255, 255, 255, ${alpha})`;
+          ctx.fill();
+        }
       }
 
-      // Ripples
-      for (let i = rippleArray.length - 1; i >= 0; i--) {
-        rippleArray[i].update();
-        rippleArray[i].draw();
-        if (rippleArray[i].alpha <= 0) rippleArray.splice(i, 1);
-      }
-
-      requestAnimationFrame(drawScene);
+      time += waveSpeed;
+      requestAnimationFrame(draw);
     }
 
-    drawScene();
-
-    let bleButton = document.getElementById("bleButton");
-    let fullscreenButton = document.getElementById("fullscreenButton");
-    let pointsCountSpan = document.getElementById("pointsCount");
-    let motorCountSpan = document.getElementById("motorCount");
-
-    let bleDevice = null;
-    let bleCharacteristic = null;
-
-    bleButton.onclick = async () => {
-      if (!bleDevice) {
-        try {
-          const device = await navigator.bluetooth.requestDevice({
-            filters: [{ services: ["0000ffe0-0000-1000-8000-00805f9b34fb"] }]
-          });
-          bleDevice = device;
-          const server = await device.gatt.connect();
-          const service = await server.getPrimaryService("0000ffe0-0000-1000-8000-00805f9b34fb");
-          bleCharacteristic = await service.getCharacteristic("0000ffe1-0000-1000-8000-00805f9b34fb");
-          await bleCharacteristic.startNotifications();
-          bleCharacteristic.addEventListener("characteristicvaluechanged", handleData);
-          bleButton.textContent = "Disconnect Device";
-        } catch (e) {
-          alert("Failed to connect: " + e);
-        }
-      } else {
-        if (bleDevice.gatt.connected) {
-          bleDevice.gatt.disconnect();
-        }
-        bleDevice = null;
-        bleCharacteristic = null;
-        bleButton.textContent = "Connect Device";
-      }
-    };
-
-    fullscreenButton.onclick = () => {
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen();
-        fullscreenButton.textContent = "Exit Fullscreen";
-      } else {
-        document.exitFullscreen();
-        fullscreenButton.textContent = "Fullscreen";
-      }
-    };
-
-    function handleData(event) {
-      const value = new TextDecoder().decode(event.target.value).trim();
-      const parts = value.split(",");
-      if (parts.length === 5) {
-        waveValue = parseFloat(parts[0]);
-        for (let i = 0; i < 3; i++) {
-          fishValues[i] = parseFloat(parts[i + 1]);
-        }
-        vibration = parseInt(parts[4]);
-
-        let mismatchCount = 0;
-        for (let i = 0; i < 3; i++) {
-          if (Math.abs(fishValues[i] - waveValue) > diffThreshold) {
-            mismatchCount++;
-            rippleArray.push(new Ripple(sensorPositions[i].x, sensorPositions[i].y - 40));
-          }
-        }
-
-        if (mismatchCount >= requiredFishTriggers && vibration > vibrationThreshold) {
-          if (!motorTriggered) {
-            triggerCount++;
-            motorTriggered = true;
-            setTimeout(() => motorTriggered = false, 2000);
-          }
-        }
-
-        pointsCountSpan.textContent = triggerCount * 3;
-        motorCountSpan.textContent = triggerCount;
-      }
-    }
+    draw();
   </script>
 </body>
 </html>
