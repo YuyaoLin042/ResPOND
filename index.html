@@ -2,29 +2,34 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>ResPOND BLE Connect</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ResPOND BLE</title>
   <style>
     html, body {
       margin: 0;
       padding: 0;
-      font-family: sans-serif;
-      background: linear-gradient(to bottom, #1a4e48, #40897f);
-      color: #fff;
       overflow: hidden;
+      font-family: 'Helvetica Neue', sans-serif;
+      background: linear-gradient(to bottom, #0f3d39, #356f67);
+      color: #fff;
+    }
+    canvas {
+      display: block;
     }
     #ui {
       position: absolute;
       top: 20px;
       left: 30px;
+      z-index: 10;
     }
     #ui h1 {
+      font-size: 28px;
       margin: 0;
-      font-size: 24px;
+      font-weight: bold;
     }
     #ui p {
-      margin: 5px 0;
       font-size: 14px;
+      margin: 4px 0;
     }
     #buttons {
       position: absolute;
@@ -35,12 +40,12 @@
       gap: 10px;
     }
     button {
+      background-color: #4e5cf5;
+      color: white;
+      border: none;
       padding: 10px 16px;
       font-size: 14px;
-      border: none;
       border-radius: 20px;
-      background: #4e5cf5;
-      color: white;
       cursor: pointer;
     }
   </style>
@@ -48,65 +53,177 @@
 <body>
   <div id="ui">
     <h1>ResPOND</h1>
-    <p id="status">Status: Not connected</p>
+    <p>Gentle aquatic feedback</p>
     <p id="point-count">Connected Points: 0</p>
     <p id="motor-count">Motor Trigger Count: 0</p>
   </div>
   <div id="buttons">
     <button onclick="connectDevice()">Connect Device</button>
     <button onclick="disconnectDevice()">Disconnect Device</button>
+    <button onclick="toggleFullscreen()">Fullscreen</button>
   </div>
-
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
   <script>
-    let device;
-    let characteristic;
-    let connectedPoints = 0;
+    let wavePhase = 0;
+    let pellets = [];
+    let bubbles = [];
+    let fishList = [];
     let motorTriggerCount = 0;
+    let connectedPoints = 0;
+    let device, characteristic;
+
+    function setup() {
+      createCanvas(windowWidth, windowHeight);
+      for (let i = 0; i < 3; i++) {
+        fishList.push(new Fish(width * (0.3 + i * 0.2), height * 0.6));
+      }
+    }
+
+    function draw() {
+      background(15, 61, 57);
+      drawWaves();
+      fishList.forEach(f => f.update());
+      fishList.forEach(f => f.display());
+
+      for (let i = pellets.length - 1; i >= 0; i--) {
+        pellets[i].update();
+        pellets[i].display();
+        if (pellets[i].hitWater) {
+          for (let j = 0; j < 2; j++) {
+            bubbles.push(new Bubble(pellets[i].pos.x, height * 0.5));
+          }
+        }
+        if (pellets[i].isDone()) pellets.splice(i, 1);
+      }
+
+      for (let i = bubbles.length - 1; i >= 0; i--) {
+        bubbles[i].update();
+        bubbles[i].display();
+        if (bubbles[i].isDone()) bubbles.splice(i, 1);
+      }
+    }
+
+    function drawWaves() {
+      noStroke();
+      for (let x = 0; x < width; x += 10) {
+        for (let y = 0; y < 30; y++) {
+          let yy = height * 0.45 + 8 * sin(x * 0.01 + wavePhase + y * 0.2);
+          let alpha = map(y, 0, 29, 100, 10);
+          fill(255, alpha);
+          ellipse(x, yy + y * 6, 4 - y * 0.08);
+        }
+      }
+      wavePhase += 0.008;
+    }
+
+    class Fish {
+      constructor(x, y) {
+        this.base = createVector(x, y);
+        this.offset = random(TWO_PI);
+      }
+      update() {
+        this.pos = createVector(
+          this.base.x + sin(frameCount * 0.01 + this.offset) * 15,
+          this.base.y + sin(frameCount * 0.02 + this.offset) * 8
+        );
+      }
+      display() {
+        push();
+        translate(this.pos.x, this.pos.y);
+        stroke(255, 200);
+        strokeWeight(1.2);
+        noFill();
+        beginShape();
+        vertex(-10, 0);
+        bezierVertex(-4, -6, 4, -6, 10, 0);
+        bezierVertex(4, 6, -4, 6, -10, 0);
+        endShape();
+        line(-10, 0, -16, -4);
+        line(-10, 0, -16, 4);
+        pop();
+      }
+    }
+
+    class Pellet {
+      constructor(x) {
+        this.pos = createVector(x, -20);
+        this.hitWater = false;
+        this.alpha = 255;
+      }
+      update() {
+        if (!this.hitWater) this.pos.y += 1.2;
+        else this.alpha -= 2;
+        if (this.pos.y > height * 0.5) this.hitWater = true;
+      }
+      display() {
+        fill(255, this.alpha);
+        noStroke();
+        ellipse(this.pos.x, this.pos.y, 6, 6);
+      }
+      isDone() {
+        return this.alpha <= 0;
+      }
+    }
+
+    class Bubble {
+      constructor(x, y) {
+        this.pos = createVector(x, y);
+        this.size = random(3, 8);
+        this.speed = random(0.3, 0.8);
+        this.alpha = 150;
+      }
+      update() {
+        this.pos.y -= this.speed;
+        this.alpha -= 1.5;
+      }
+      display() {
+        noStroke();
+        fill(255, this.alpha);
+        ellipse(this.pos.x, this.pos.y, this.size);
+      }
+      isDone() {
+        return this.alpha <= 0;
+      }
+    }
 
     async function connectDevice() {
       try {
         device = await navigator.bluetooth.requestDevice({
-          filters: [{ namePrefix: 'Bluno' }],
-          optionalServices: ['dfb0']
+          filters: [{ services: [0xdfb0] }]
         });
-
         const server = await device.gatt.connect();
-        document.getElementById('status').textContent = 'Status: Connected';
-
-        const service = await server.getPrimaryService('dfb0');
-        characteristic = await service.getCharacteristic('dfb1');
-
-        await characteristic.startNotifications();
+        const service = await server.getPrimaryService(0xdfb0);
+        characteristic = await service.getCharacteristic(0xdfb1);
+        characteristic.startNotifications();
         characteristic.addEventListener('characteristicvaluechanged', handleData);
-
         connectedPoints = 1;
         document.getElementById('point-count').textContent = `Connected Points: ${connectedPoints}`;
       } catch (error) {
-        console.error('Bluetooth connection failed:', error);
-        alert('Bluetooth connection failed. Check console for details.');
+        alert("Bluetooth connection failed. Check console for details.");
+        console.error(error);
       }
     }
 
     function disconnectDevice() {
       if (device && device.gatt.connected) {
         device.gatt.disconnect();
-        document.getElementById('status').textContent = 'Status: Disconnected';
         connectedPoints = 0;
-        document.getElementById('point-count').textContent = `Connected Points: ${connectedPoints}`;
+        document.getElementById('point-count').textContent = `Connected Points: 0`;
       }
     }
 
     function handleData(event) {
-      const value = event.target.value;
-      const decoder = new TextDecoder('utf-8');
-      const data = decoder.decode(value);
-      console.log('Received data:', data);
-
-      // Example logic: count motor triggers
-      if (data.includes('MOTOR_TRIGGER')) {
+      const value = event.target.value.getUint8(0);
+      if (value === 1) {
         motorTriggerCount++;
         document.getElementById('motor-count').textContent = `Motor Trigger Count: ${motorTriggerCount}`;
+        pellets.push(new Pellet(random(width * 0.3, width * 0.7)));
       }
+    }
+
+    function toggleFullscreen() {
+      let fs = fullscreen();
+      fullscreen(!fs);
     }
   </script>
 </body>
