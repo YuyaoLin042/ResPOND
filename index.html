@@ -64,6 +64,7 @@
     let fishList = [], ripples = [], pellets = [], bubbles = [];
     let waveValue = 0, fishValues = [0, 0, 0], lastFishValues = [0, 0, 0], vibration = 0;
     let motorTriggerCount = 0, lastTrigger = false;
+    let wavePhase = 0;
 
     const diffThreshold = 4.0;
     const vibrationThreshold = 20;
@@ -94,7 +95,7 @@
         pellets[i].update();
         pellets[i].display();
         if (pellets[i].hitWater) {
-          for (let j = 0; j < 1; j++) {
+          for (let j = 0; j < 2; j++) {
             bubbles.push(new Bubble(pellets[i].pos.x, height * 0.5));
           }
         }
@@ -113,29 +114,33 @@
       fill(255, 255, 255, 30);
       for (let x = 0; x < width; x += 10) {
         for (let y = 0; y < 30; y++) {
-          let yy = height * 0.4 + 6 * sin(x * 0.015 + y * 0.2);
+          let yy = height * 0.4 + 6 * sin(x * 0.015 + wavePhase + y * 0.2);
           let alpha = map(y, 0, 29, 80, 10);
           fill(255, alpha);
           ellipse(x, yy + y * 6, 4 - y * 0.08);
         }
       }
+      wavePhase += 0.02;
     }
 
     class Fish {
       constructor(x, y) {
-        this.x = x; this.y = y;
+        this.x = x;
+        this.baseY = y;
+        this.offset = random(1000);
       }
       display() {
+        let y = this.baseY + sin(frameCount * 0.05 + this.offset) * 3;
         stroke(200, 255, 230);
         strokeWeight(1);
         noFill();
         beginShape();
-        vertex(this.x - 12, this.y);
-        quadraticVertex(this.x, this.y - 6, this.x + 12, this.y);
-        quadraticVertex(this.x, this.y + 6, this.x - 12, this.y);
+        vertex(this.x - 12, y);
+        quadraticVertex(this.x, y - 6, this.x + 12, y);
+        quadraticVertex(this.x, y + 6, this.x - 12, y);
         endShape();
-        line(this.x - 12, this.y, this.x - 18, this.y - 5);
-        line(this.x - 12, this.y, this.x - 18, this.y + 5);
+        line(this.x - 12, y, this.x - 18, y - 5);
+        line(this.x - 12, y, this.x - 18, y + 5);
       }
     }
 
@@ -163,9 +168,9 @@
         this.hitWater = false;
       }
       update() {
-        if (!this.hitWater) this.pos.y += 8;
+        if (!this.hitWater) this.pos.y += 5;
         else this.alpha -= 3;
-        if (this.pos.y > height * 0.35) this.hitWater = true;
+        if (this.pos.y > height * 0.3) this.hitWater = true;
       }
       display() {
         fill(255, this.alpha);
@@ -208,7 +213,7 @@
           await bleCharacteristic.startNotifications();
           bleCharacteristic.addEventListener("characteristicvaluechanged", (event) => {
             const value = new TextDecoder().decode(event.target.value).trim();
-            console.log("BLE value:", value); // ← 调试用
+            console.log("BLE value:", value);
             handleData(value);
           });
           document.getElementById("bleButton").textContent = "Disconnect Device";
