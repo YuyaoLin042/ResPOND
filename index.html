@@ -163,9 +163,9 @@
         this.hitWater = false;
       }
       update() {
-        if (!this.hitWater) this.pos.y += 4;
+        if (!this.hitWater) this.pos.y += 8;
         else this.alpha -= 3;
-        if (this.pos.y > height * 0.5) this.hitWater = true;
+        if (this.pos.y > height * 0.35) this.hitWater = true;
       }
       display() {
         fill(255, this.alpha);
@@ -245,7 +245,7 @@
       let mismatch = fishValues.filter(v => Math.abs(v - waveValue) > diffThreshold).length;
       let trigger = mismatch >= requiredFishTriggers && vibration > vibrationThreshold;
       if (trigger && !lastTrigger) {
-        for (let i = 0; i < 20; i++) {
+        for (let i = 0; i < 100; i++) {
           pellets.push(new Pellet(random(width)));
         }
         motorTriggerCount++;
