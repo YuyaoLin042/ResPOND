@@ -261,7 +261,7 @@
       let trigger = mismatch >= requiredFishTriggers && vibration > vibrationThreshold;
 
       if (trigger && !lastTrigger) {
-        for (let i = 0; i < 30; i++) {
+        for (let i = 0; i < 20; i++) {
           pellets.push(new Pellet(random(width)));
         }
         motorTriggerCount++;
