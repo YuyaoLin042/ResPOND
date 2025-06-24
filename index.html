@@ -220,16 +220,28 @@
     async function connectDevice() {
       try {
         device = await navigator.bluetooth.requestDevice({
-          filters: [{ services: ['battery_service'] }],
-          optionalServices: ['device_information']
+          filters: [{ namePrefix: 'Bluno' }],
+          optionalServices: ['dfb0']
         });
         const server = await device.gatt.connect();
         connectedPoints++;
         document.getElementById('point-count').textContent = `Connected Points: ${connectedPoints}`;
-        // You can read/write characteristics here
+
+        const service = await server.getPrimaryService('dfb0');
+        characteristic = await service.getCharacteristic('dfb1');
+
+        await characteristic.startNotifications();
+        characteristic.addEventListener('characteristicvaluechanged', handleData);
       } catch (error) {
         console.error('Bluetooth connection failed:', error);
       }
+    }
+
+    function handleData(event) {
+      const value = event.target.value;
+      const decoder = new TextDecoder('utf-8');
+      const data = decoder.decode(value);
+      console.log("Received:", data);
     }
 
     function disconnectDevice() {
