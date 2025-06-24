@@ -168,13 +168,11 @@
         this.hitWater = false;
       }
     update() {
-      if (!this.hitWater) {
-        this.pos.y += 5;
-        if (this.pos.y > height * 0.55) this.hitWater = true;
-      } else {
-        this.pos.y += 1.5;        // ✅ 继续小幅下落
-        this.alpha -= 1.5;        // ✅ 缓慢淡出
-      }
+      if (!this.hitWater) this.pos.y += 5;
+      else this.alpha -= 3;
+    
+      let waveY = height * 0.4 + 6 * sin(this.pos.x * 0.015 + wavePhase); // ⬅️ 根据波浪动态水面高度判断
+      if (this.pos.y > waveY) this.hitWater = true;
     }
       display() {
         fill(255, this.alpha);
@@ -263,7 +261,7 @@ function handleData(str) {
 
   if (trigger && !lastTrigger) {
     // 💊 药片出现
-    for (let i = 0; i < 30; i++) {
+    for (let i = 0; i < 20; i++) {
       pellets.push(new Pellet(random(width)));
     }
 
