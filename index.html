@@ -167,11 +167,15 @@
         this.alpha = 255;
         this.hitWater = false;
       }
-      update() {
-        if (!this.hitWater) this.pos.y += 5;
-        else this.alpha -= 3;
+    update() {
+      if (!this.hitWater) {
+        this.pos.y += 5;
         if (this.pos.y > height * 0.55) this.hitWater = true;
+      } else {
+        this.pos.y += 1.5;        // ✅ 继续小幅下落
+        this.alpha -= 1.5;        // ✅ 缓慢淡出
       }
+    }
       display() {
         fill(255, this.alpha);
         noStroke();
