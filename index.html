@@ -3,13 +3,13 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ResPOND</title>
+  <title>ResPOND BLE Ripples</title>
   <style>
     html, body {
       margin: 0;
       padding: 0;
       overflow: hidden;
-      font-family: 'Helvetica Neue', sans-serif;
+      font-family: 'Calibri', sans-serif;
       background: linear-gradient(to bottom, #1a4e48, #40897f);
       color: #fff;
     }
@@ -58,36 +58,84 @@
     <p id="motor-count">Motor Trigger Count: 0</p>
   </div>
   <div id="buttons">
-    <button onclick="connectDevice()">Connect Device</button>
-    <button onclick="disconnectDevice()">Disconnect Device</button>
-    <button onclick="toggleFullscreen()">Fullscreen</button>
+    <button id="bleButton">Connect Device</button>
+    <button id="fullscreenButton">Fullscreen</button>
   </div>
+
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
   <script>
     let wavePhase = 0;
-    let ripples = [];
-    let pellets = [];
-    let bubbles = [];
-    let fishList = [];
-    let motorTriggerCount = 0;
-    let connectedPoints = 0;
-    let device = null;
-    let characteristic = null;
+    let ripples = [], pellets = [], bubbles = [];
+    let motorTriggerCount = 0, connectedPoints = 0;
+    let bleDevice = null, bleCharacteristic = null;
 
-    let reference = 0, f1 = 0, f2 = 0, f3 = 0, vib = 0;
+    document.getElementById('bleButton').addEventListener('click', async () => {
+      if (!bleDevice) {
+        try {
+          bleDevice = await navigator.bluetooth.requestDevice({
+            filters: [{ services: ['0000ffe0-0000-1000-8000-00805f9b34fb'] }]
+          });
+          const server = await bleDevice.gatt.connect();
+          const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
+          bleCharacteristic = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
+          await bleCharacteristic.startNotifications();
+          bleCharacteristic.addEventListener('characteristicvaluechanged', handleData);
+          connectedPoints = 1;
+          document.getElementById('point-count').textContent = `Connected Points: ${connectedPoints}`;
+          document.getElementById('bleButton').textContent = 'Disconnect Device';
+        } catch (err) {
+          alert('Connection failed: ' + err);
+        }
+      } else {
+        if (bleDevice.gatt.connected) bleDevice.gatt.disconnect();
+        bleDevice = null;
+        bleCharacteristic = null;
+        connectedPoints = 0;
+        document.getElementById('point-count').textContent = 'Connected Points: 0';
+        document.getElementById('bleButton').textContent = 'Connect Device';
+      }
+    });
+
+    document.getElementById('fullscreenButton').addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+        document.getElementById('fullscreenButton').textContent = 'Exit Fullscreen';
+      } else {
+        document.exitFullscreen();
+        document.getElementById('fullscreenButton').textContent = 'Fullscreen';
+      }
+    });
+
+    function handleData(event) {
+      const value = new TextDecoder().decode(event.target.value).trim();
+      const parts = value.split(',');
+      if (parts.length === 5) {
+        const reference = parseFloat(parts[0]);
+        const f1 = parseFloat(parts[1]);
+        const f2 = parseFloat(parts[2]);
+        const f3 = parseFloat(parts[3]);
+        const vib = parseFloat(parts[4]);
+
+        let mismatch = 0;
+        if (Math.abs(f1 - reference) > 4) mismatch++;
+        if (Math.abs(f2 - reference) > 4) mismatch++;
+        if (Math.abs(f3 - reference) > 4) mismatch++;
+
+        if (mismatch >= 2 && vib > 20) {
+          motorTriggerCount++;
+          document.getElementById('motor-count').textContent = `Motor Trigger Count: ${motorTriggerCount}`;
+          pellets.push(new Pellet(random(width)));
+        }
+      }
+    }
 
     function setup() {
       createCanvas(windowWidth, windowHeight);
-      for (let i = 0; i < 3; i++) {
-        fishList.push(new Fish(width * (0.3 + i * 0.2), height * 0.45 + random(-10, 10)));
-      }
     }
 
     function draw() {
       background(26, 78, 72);
       drawWaves();
-      fishList.forEach(f => f.update());
-      fishList.forEach(f => f.display());
 
       for (let i = ripples.length - 1; i >= 0; i--) {
         ripples[i].update();
@@ -100,7 +148,8 @@
         pellets[i].display();
         if (pellets[i].hitWater) {
           for (let j = 0; j < 2; j++) {
-            bubbles.push(new Bubble(pellets[i].pos.x, height * 0.5));
+            bubbles.push(new Bubble(pellets[i].pos.x, height * 0.65));
+            bubbles.push(new Bubble(pellets[i].pos.x, height * 0.45));
           }
         }
         if (pellets[i].isDone()) pellets.splice(i, 1);
@@ -118,62 +167,13 @@
       fill(255, 255, 255, 30);
       for (let x = 0; x < width; x += 10) {
         for (let y = 0; y < 30; y++) {
-          let yy = height * 0.4 + 8 * sin(x * 0.01 + wavePhase + y * 0.2);
+          let yy = height * 0.35 + 8 * sin(x * 0.01 + wavePhase + y * 0.2);
           let alpha = map(y, 0, 29, 80, 10);
           fill(255, alpha);
           ellipse(x, yy + y * 6, 4 - y * 0.08);
         }
       }
       wavePhase += 0.01;
-    }
-
-    class Fish {
-      constructor(x, y) {
-        this.base = createVector(x, y);
-        this.offset = random(TWO_PI);
-      }
-      update() {
-        this.pos = createVector(
-          this.base.x + sin(frameCount * 0.01 + this.offset) * 15,
-          this.base.y + sin(frameCount * 0.02 + this.offset) * 8
-        );
-      }
-      display() {
-        push();
-        translate(this.pos.x, this.pos.y);
-        stroke(255, 200);
-        strokeWeight(1.2);
-        noFill();
-        beginShape();
-        vertex(-10, 0);
-        bezierVertex(-4, -6, 4, -6, 10, 0);
-        bezierVertex(4, 6, -4, 6, -10, 0);
-        endShape();
-        line(-10, 0, -16, -4);
-        line(-10, 0, -16, 4);
-        pop();
-      }
-    }
-
-    class Ripple {
-      constructor(x, y) {
-        this.x = x;
-        this.y = y;
-        this.r = 5;
-        this.alpha = 200;
-      }
-      update() {
-        this.r += 1;
-        this.alpha -= 1.5;
-      }
-      display() {
-        noFill();
-        stroke(200, this.alpha);
-        ellipse(this.x, this.y, this.r);
-      }
-      isDone() {
-        return this.alpha <= 0;
-      }
     }
 
     class Pellet {
@@ -185,7 +185,7 @@
       update() {
         if (!this.hitWater) this.pos.y += 1.2;
         else this.alpha -= 2;
-        if (this.pos.y > height * 0.5) this.hitWater = true;
+        if (this.pos.y > height * 0.35) this.hitWater = true;
       }
       display() {
         fill(255, this.alpha);
@@ -216,59 +216,6 @@
       isDone() {
         return this.alpha <= 0;
       }
-    }
-
-    async function connectDevice() {
-      try {
-        device = await navigator.bluetooth.requestDevice({
-          filters: [{ services: ['0000ffe0-0000-1000-8000-00805f9b34fb'] }]
-        });
-        const server = await device.gatt.connect();
-        const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
-        characteristic = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
-        await characteristic.startNotifications();
-        characteristic.addEventListener('characteristicvaluechanged', handleData);
-
-        connectedPoints = 1;
-        document.getElementById('point-count').textContent = `Connected Points: ${connectedPoints}`;
-      } catch (error) {
-        console.error('Bluetooth connection failed:', error);
-      }
-    }
-
-    function disconnectDevice() {
-      if (device && device.gatt.connected) {
-        device.gatt.disconnect();
-        connectedPoints = 0;
-        document.getElementById('point-count').textContent = `Connected Points: 0`;
-      }
-    }
-
-    function handleData(event) {
-      const value = new TextDecoder().decode(event.target.value).trim();
-      const parts = value.split(',');
-      if (parts.length === 5) {
-        reference = parseFloat(parts[0]);
-        f1 = parseFloat(parts[1]);
-        f2 = parseFloat(parts[2]);
-        f3 = parseFloat(parts[3]);
-        vib = parseFloat(parts[4]);
-
-        let mismatch = 0;
-        if (Math.abs(f1 - reference) > 4) mismatch++;
-        if (Math.abs(f2 - reference) > 4) mismatch++;
-        if (Math.abs(f3 - reference) > 4) mismatch++;
-
-        if (mismatch >= 2 && vib > 20) {
-          motorTriggerCount++;
-          document.getElementById('motor-count').textContent = `Motor Trigger Count: ${motorTriggerCount}`;
-        }
-      }
-    }
-
-    function toggleFullscreen() {
-      let fs = fullscreen();
-      fullscreen(!fs);
     }
   </script>
 </body>
