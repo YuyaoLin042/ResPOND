@@ -76,7 +76,6 @@
     let fishValues = [0, 0, 0];
     let lastFishValues = [0, 0, 0];
     let vibration = 0;
-    let motorTriggered = false;
     let motorTriggerCount = 0;
     let lastTrigger = false;
 
@@ -90,8 +89,7 @@
     function setup() {
       createCanvas(windowWidth, windowHeight);
       for (let i = 0; i < 3; i++) {
-        fishList.push(new Fish(width * (0.3 + i * 0.2), height * 0.38 + random(-10, 10)));
-        fishList.push(new Fish(width * (0.3 + i * 0.2), height * 0.45 + random(-10, 10)));
+        fishList.push(new Fish(width * (0.3 + i * 0.2), height * 0.6 + random(-10, 10)));
       }
     }
 
@@ -99,31 +97,26 @@
       background(8, 122, 94);
       drawWaves();
 
-      // Draw fish
-      for (let fish of fishList) {
-        fish.display();
-      }
+      fishList.forEach(fish => fish.update());
+      fishList.forEach(fish => fish.display());
 
-      // Draw ripples
       for (let i = ripples.length - 1; i >= 0; i--) {
         ripples[i].update();
         ripples[i].display();
         if (ripples[i].isDone()) ripples.splice(i, 1);
       }
 
-      // Draw pellets
       for (let i = pellets.length - 1; i >= 0; i--) {
         pellets[i].update();
         pellets[i].display();
         if (pellets[i].hitWater) {
-          for (let j = 0; j < 2; j++) {
-            bubbles.push(new Bubble(pellets[i].pos.x, height * 0.5));
+          for (let j = 0; j < 3; j++) {
+            bubbles.push(new Bubble(pellets[i].pos.x, height * 0.55));
           }
         }
         if (pellets[i].isDone()) pellets.splice(i, 1);
       }
 
-      // Draw bubbles
       for (let i = bubbles.length - 1; i >= 0; i--) {
         bubbles[i].update();
         bubbles[i].display();
@@ -136,7 +129,7 @@
       fill(255, 255, 255, 30);
       for (let x = 0; x < width; x += 10) {
         for (let y = 0; y < 30; y++) {
-          let yy = height * 0.4 +
+          let yy = height * 0.5 +
                    6 * sin(x * 0.015 + wavePhase + y * 0.2) +
                    3 * cos(x * 0.01 + wavePhase * 1.2 + y * 0.3);
           let alpha = map(y, 0, 29, 80, 10);
@@ -149,55 +142,42 @@
 
     class Fish {
       constructor(x, y) {
-        this.x = x;
-        this.y = y;
-      }
-      display() {
-        stroke(200, 255, 230);
-        strokeWeight(1);
-        noFill();
-        beginShape();
-        vertex(this.x - 12, this.y);
-        quadraticVertex(this.x, this.y - 6, this.x + 12, this.y);
-        quadraticVertex(this.x, this.y + 6, this.x - 12, this.y);
-        endShape();
-        line(this.x - 12, this.y, this.x - 18, this.y - 5);
-        line(this.x - 12, this.y, this.x - 18, this.y + 5);
-      }
-    }
-
-    class Ripple {
-      constructor(x, y) {
-        this.x = x;
-        this.y = y;
-        this.radius = 5;
-        this.alpha = 1.0;
+        this.base = createVector(x, y);
+        this.offset = random(TWO_PI);
       }
       update() {
-        this.radius += 0.8;
-        this.alpha -= 0.01;
+        this.pos = createVector(
+          this.base.x + sin(frameCount * 0.01 + this.offset) * 10,
+          this.base.y + cos(frameCount * 0.01 + this.offset) * 6
+        );
       }
       display() {
-        stroke(255, 255, 255, this.alpha * 255);
+        push();
+        translate(this.pos.x, this.pos.y);
+        stroke(240, 255, 240);
         strokeWeight(1.2);
         noFill();
-        ellipse(this.x, this.y, this.radius * 2);
-      }
-      isDone() {
-        return this.alpha <= 0;
+        beginShape();
+        vertex(-10, 0);
+        bezierVertex(-4, -6, 4, -6, 10, 0);
+        bezierVertex(4, 6, -4, 6, -10, 0);
+        endShape();
+        line(-10, 0, -16, -4);
+        line(-10, 0, -16, 4);
+        pop();
       }
     }
 
     class Pellet {
       constructor(x) {
-        this.pos = createVector(x, -10);
+        this.pos = createVector(x, -20);
         this.alpha = 255;
         this.hitWater = false;
       }
       update() {
-        if (!this.hitWater) this.pos.y += 1.2;
-        else this.alpha -= 2;
-        if (this.pos.y > height * 0.5) this.hitWater = true;
+        if (!this.hitWater) this.pos.y += 2.4;
+        else this.alpha -= 3;
+        if (this.pos.y > height * 0.55) this.hitWater = true;
       }
       display() {
         fill(255, this.alpha);
@@ -212,17 +192,17 @@
     class Bubble {
       constructor(x, y) {
         this.pos = createVector(x, y);
-        this.radius = random(3, 6);
-        this.alpha = 180;
-        this.speed = random(0.5, 1.2);
+        this.radius = random(4, 10);
+        this.alpha = 150;
+        this.speed = random(0.6, 1.5);
       }
       update() {
         this.pos.y -= this.speed;
-        this.alpha -= 1;
+        this.alpha -= 1.2;
       }
       display() {
-        stroke(255, this.alpha);
-        noFill();
+        noStroke();
+        fill(255, this.alpha);
         ellipse(this.pos.x, this.pos.y, this.radius);
       }
       isDone() {
@@ -230,7 +210,7 @@
       }
     }
 
-    // BLE Handling
+    // BLE
     document.getElementById("bleButton").onclick = async () => {
       if (!bleDevice) {
         try {
@@ -248,9 +228,7 @@
           alert("Failed to connect: " + e);
         }
       } else {
-        if (bleDevice.gatt.connected) {
-          bleDevice.gatt.disconnect();
-        }
+        if (bleDevice.gatt.connected) bleDevice.gatt.disconnect();
         bleDevice = null;
         bleCharacteristic = null;
         document.getElementById("bleButton").textContent = "Connect Device";
@@ -275,7 +253,7 @@
         for (let i = 0; i < 3; i++) {
           fishValues[i] = parseFloat(parts[i + 1]);
           if (Math.abs(fishValues[i] - lastFishValues[i]) > 0.5) {
-            ripples.push(new Ripple(fishList[i * 2].x, fishList[i * 2].y));
+            ripples.push(new Ripple(fishList[i].base.x, fishList[i].base.y));
           }
           lastFishValues[i] = fishValues[i];
         }
@@ -290,7 +268,7 @@
 
         const newTrigger = (mismatchCount >= requiredFishTriggers && vibration > vibrationThreshold);
         if (newTrigger && !lastTrigger) {
-          for (let i = 0; i < 6; i++) {
+          for (let i = 0; i < 8; i++) {
             pellets.push(new Pellet(random(width)));
           }
           motorTriggerCount++;
