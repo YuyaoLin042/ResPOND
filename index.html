@@ -242,7 +242,7 @@
       for (let i = 0; i < 3; i++) {
         fishValues[i] = parseFloat(parts[i + 1]);
         if (Math.abs(fishValues[i] - lastFishValues[i]) > 0.5) {
-          ripples.push(new Ripple(fishList[i].x, fishList[i].y));
+          ripples.push(new Ripple(fishList[i].x, fishList[i].baseY));
         }
         lastFishValues[i] = fishValues[i];
       }
