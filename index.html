@@ -71,13 +71,13 @@
     const diffThreshold = 4.0;
     const vibrationThreshold = 20;
     const requiredFishTriggers = 2;
-    const waterSurfaceY = 0.55;     // 水面高度
-    const bubbleTriggerY = 0.45;    // 药片触发泡泡的高度
+    const waterSurfaceY = 0.6;     // 水面高度
+    const bubbleTriggerY = 0.65;    // 药片触发泡泡的高度
 
     function setup() {
       createCanvas(windowWidth, windowHeight);
       for (let i = 0; i < 3; i++) {
-        fishList.push(new Fish(width * (0.3 + i * 0.2), height * 0.45 + random(-10, 10)));
+        fishList.push(new Fish(width * (0.3 + i * 0.2), height * 0.65 + random(-10, 10)));
       }
     }
 
@@ -115,7 +115,7 @@
       fill(255, 255, 255, 30);
       for (let x = 0; x < width; x += 10) {
         for (let y = 0; y < 30; y++) {
-          let yy = height * 0.4 + 6 * sin(x * 0.015 + wavePhase + y * 0.2);
+          let yy = height * 0.6 + 6 * sin(x * 0.015 + wavePhase + y * 0.2);
           let alpha = map(y, 0, 29, 80, 10);
           fill(255, alpha);
           ellipse(x, yy + y * 6, 4 - y * 0.08);
