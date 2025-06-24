@@ -69,11 +69,12 @@
     let pellets = [];
     let bubbles = [];
     let fishList = [];
-    let triggerActive = false;
     let motorTriggerCount = 0;
     let connectedPoints = 0;
-    let device;
-    let characteristic;
+    let device = null;
+    let characteristic = null;
+
+    let reference = 0, f1 = 0, f2 = 0, f3 = 0, vib = 0;
 
     function setup() {
       createCanvas(windowWidth, windowHeight);
@@ -220,13 +221,16 @@
     async function connectDevice() {
       try {
         device = await navigator.bluetooth.requestDevice({
-          filters: [{ services: ['battery_service'] }],
-          optionalServices: ['device_information']
+          filters: [{ services: ['0000ffe0-0000-1000-8000-00805f9b34fb'] }]
         });
         const server = await device.gatt.connect();
-        connectedPoints++;
+        const service = await server.getPrimaryService('0000ffe0-0000-1000-8000-00805f9b34fb');
+        characteristic = await service.getCharacteristic('0000ffe1-0000-1000-8000-00805f9b34fb');
+        await characteristic.startNotifications();
+        characteristic.addEventListener('characteristicvaluechanged', handleData);
+
+        connectedPoints = 1;
         document.getElementById('point-count').textContent = `Connected Points: ${connectedPoints}`;
-        // You can read/write characteristics here
       } catch (error) {
         console.error('Bluetooth connection failed:', error);
       }
@@ -237,6 +241,28 @@
         device.gatt.disconnect();
         connectedPoints = 0;
         document.getElementById('point-count').textContent = `Connected Points: 0`;
+      }
+    }
+
+    function handleData(event) {
+      const value = new TextDecoder().decode(event.target.value).trim();
+      const parts = value.split(',');
+      if (parts.length === 5) {
+        reference = parseFloat(parts[0]);
+        f1 = parseFloat(parts[1]);
+        f2 = parseFloat(parts[2]);
+        f3 = parseFloat(parts[3]);
+        vib = parseFloat(parts[4]);
+
+        let mismatch = 0;
+        if (Math.abs(f1 - reference) > 4) mismatch++;
+        if (Math.abs(f2 - reference) > 4) mismatch++;
+        if (Math.abs(f3 - reference) > 4) mismatch++;
+
+        if (mismatch >= 2 && vib > 20) {
+          motorTriggerCount++;
+          document.getElementById('motor-count').textContent = `Motor Trigger Count: ${motorTriggerCount}`;
+        }
       }
     }
 
