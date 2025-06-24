@@ -170,7 +170,7 @@
       update() {
         if (!this.hitWater) this.pos.y += 5;
         else this.alpha -= 3;
-        if (this.pos.y > height * 0.3) this.hitWater = true;
+        if (this.pos.y > height * 0.42) this.hitWater = true;
       }
       display() {
         fill(255, this.alpha);
@@ -235,31 +235,49 @@
       }
     };
 
-    function handleData(str) {
-      const parts = str.split(',');
-      if (parts.length !== 5) return;
-      waveValue = parseFloat(parts[0]);
-      for (let i = 0; i < 3; i++) {
-        fishValues[i] = parseFloat(parts[i + 1]);
-        if (Math.abs(fishValues[i] - lastFishValues[i]) > 0.5) {
-          ripples.push(new Ripple(fishList[i].x, fishList[i].baseY));
-        }
-        lastFishValues[i] = fishValues[i];
-      }
-      vibration = parseInt(parts[4]);
-      let mismatch = fishValues.filter(v => Math.abs(v - waveValue) > diffThreshold).length;
-      let trigger = mismatch >= requiredFishTriggers && vibration > vibrationThreshold;
-      if (trigger && !lastTrigger) {
-        for (let i = 0; i < 25; i++) {
-          pellets.push(new Pellet(random(width)));
-        }
-        motorTriggerCount++;
-        document.getElementById("motorCount").textContent = motorTriggerCount;
+let clearTimer = null; // ← 放在所有函数外，全局声明
 
-      }
-      lastTrigger = trigger;
-      document.getElementById("pointsCount").textContent = fishValues.length;
+function handleData(str) {
+  const parts = str.split(',');
+  if (parts.length !== 5) return;
+
+  waveValue = parseFloat(parts[0]);
+
+  for (let i = 0; i < 3; i++) {
+    fishValues[i] = parseFloat(parts[i + 1]);
+    if (Math.abs(fishValues[i] - lastFishValues[i]) > 0.5) {
+      ripples.push(new Ripple(fishList[i].x, fishList[i].y));
     }
+    lastFishValues[i] = fishValues[i];
+  }
+
+  vibration = parseInt(parts[4]);
+
+  // 🧠 判定条件
+  let mismatch = fishValues.filter(v => Math.abs(v - waveValue) > diffThreshold).length;
+  let trigger = mismatch >= requiredFishTriggers && vibration > vibrationThreshold;
+
+  if (trigger && !lastTrigger) {
+    // 💊 药片出现
+    for (let i = 0; i < 30; i++) {
+      pellets.push(new Pellet(random(width)));
+    }
+
+    motorTriggerCount++;
+    document.getElementById("motorCount").textContent = motorTriggerCount;
+
+    // 💨 延迟清除药片 + 泡泡
+    if (clearTimer) clearTimeout(clearTimer); // 避免多个 timer 重叠
+    clearTimer = setTimeout(() => {
+      pellets = [];
+      bubbles = [];
+    }, 5000); // ⏱️ 修改这里控制显示时间（单位是毫秒）
+  }
+
+  lastTrigger = trigger;
+  document.getElementById("pointsCount").textContent = fishValues.length;
+}
+
   </script>
 </body>
 </html>
