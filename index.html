@@ -3,14 +3,14 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>ResPOND BLE</title>
+  <title>ResPOND</title>
   <style>
     html, body {
       margin: 0;
       padding: 0;
       overflow: hidden;
       font-family: 'Helvetica Neue', sans-serif;
-      background: linear-gradient(to bottom, #0f3d39, #356f67);
+      background: linear-gradient(to bottom, #1a4e48, #40897f);
       color: #fff;
     }
     canvas {
@@ -53,7 +53,7 @@
 <body>
   <div id="ui">
     <h1>ResPOND</h1>
-    <p>Gentle aquatic feedback</p>
+    <p>Sense, Respond, Empower</p>
     <p id="point-count">Connected Points: 0</p>
     <p id="motor-count">Motor Trigger Count: 0</p>
   </div>
@@ -65,25 +65,34 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/p5.js/1.4.2/p5.min.js"></script>
   <script>
     let wavePhase = 0;
+    let ripples = [];
     let pellets = [];
     let bubbles = [];
     let fishList = [];
+    let triggerActive = false;
     let motorTriggerCount = 0;
     let connectedPoints = 0;
-    let device, characteristic;
+    let device;
+    let characteristic;
 
     function setup() {
       createCanvas(windowWidth, windowHeight);
       for (let i = 0; i < 3; i++) {
-        fishList.push(new Fish(width * (0.3 + i * 0.2), height * 0.6));
+        fishList.push(new Fish(width * (0.3 + i * 0.2), height * 0.45 + random(-10, 10)));
       }
     }
 
     function draw() {
-      background(15, 61, 57);
+      background(26, 78, 72);
       drawWaves();
       fishList.forEach(f => f.update());
       fishList.forEach(f => f.display());
+
+      for (let i = ripples.length - 1; i >= 0; i--) {
+        ripples[i].update();
+        ripples[i].display();
+        if (ripples[i].isDone()) ripples.splice(i, 1);
+      }
 
       for (let i = pellets.length - 1; i >= 0; i--) {
         pellets[i].update();
@@ -105,15 +114,16 @@
 
     function drawWaves() {
       noStroke();
+      fill(255, 255, 255, 30);
       for (let x = 0; x < width; x += 10) {
         for (let y = 0; y < 30; y++) {
-          let yy = height * 0.45 + 8 * sin(x * 0.01 + wavePhase + y * 0.2);
-          let alpha = map(y, 0, 29, 100, 10);
+          let yy = height * 0.4 + 8 * sin(x * 0.01 + wavePhase + y * 0.2);
+          let alpha = map(y, 0, 29, 80, 10);
           fill(255, alpha);
           ellipse(x, yy + y * 6, 4 - y * 0.08);
         }
       }
-      wavePhase += 0.008;
+      wavePhase += 0.01;
     }
 
     class Fish {
@@ -141,6 +151,27 @@
         line(-10, 0, -16, -4);
         line(-10, 0, -16, 4);
         pop();
+      }
+    }
+
+    class Ripple {
+      constructor(x, y) {
+        this.x = x;
+        this.y = y;
+        this.r = 5;
+        this.alpha = 200;
+      }
+      update() {
+        this.r += 1;
+        this.alpha -= 1.5;
+      }
+      display() {
+        noFill();
+        stroke(200, this.alpha);
+        ellipse(this.x, this.y, this.r);
+      }
+      isDone() {
+        return this.alpha <= 0;
       }
     }
 
@@ -189,18 +220,15 @@
     async function connectDevice() {
       try {
         device = await navigator.bluetooth.requestDevice({
-          filters: [{ services: [0xdfb0] }]
+          filters: [{ services: ['battery_service'] }],
+          optionalServices: ['device_information']
         });
         const server = await device.gatt.connect();
-        const service = await server.getPrimaryService(0xdfb0);
-        characteristic = await service.getCharacteristic(0xdfb1);
-        characteristic.startNotifications();
-        characteristic.addEventListener('characteristicvaluechanged', handleData);
-        connectedPoints = 1;
+        connectedPoints++;
         document.getElementById('point-count').textContent = `Connected Points: ${connectedPoints}`;
+        // You can read/write characteristics here
       } catch (error) {
-        alert("Bluetooth connection failed. Check console for details.");
-        console.error(error);
+        console.error('Bluetooth connection failed:', error);
       }
     }
 
@@ -209,15 +237,6 @@
         device.gatt.disconnect();
         connectedPoints = 0;
         document.getElementById('point-count').textContent = `Connected Points: 0`;
-      }
-    }
-
-    function handleData(event) {
-      const value = event.target.value.getUint8(0);
-      if (value === 1) {
-        motorTriggerCount++;
-        document.getElementById('motor-count').textContent = `Motor Trigger Count: ${motorTriggerCount}`;
-        pellets.push(new Pellet(random(width * 0.3, width * 0.7)));
       }
     }
 
