@@ -8,7 +8,7 @@
     html, body {
       margin: 0;
       padding: 0;
-      background: #000;
+      background: #087a5e;
       overflow: hidden;
       font-family: 'Segoe UI', sans-serif;
     }
@@ -71,27 +71,14 @@
     const diffThreshold = 4.0;
     const vibrationThreshold = 20;
     const requiredFishTriggers = 2;
-    const waterSurfaceY = 0.6;
-    const bubbleTriggerY = 0.65;
+    const waterSurfaceY = 0.6;     // 水面高度
+    const bubbleTriggerY = 0.65;    // 药片触发泡泡的高度
 
     function setup() {
-      createCanvas(2360, 1640);  // 固定为 iPad 横屏比例
-      centerCanvas();
-
+      createCanvas(windowWidth, windowHeight);
       for (let i = 0; i < 3; i++) {
         fishList.push(new Fish(width * (0.3 + i * 0.2), height * 0.65 + random(-10, 10)));
       }
-    }
-
-    function centerCanvas() {
-      let canvas = document.querySelector('canvas');
-      canvas.style.position = 'absolute';
-      canvas.style.left = `${(window.innerWidth - width) / 2}px`;
-      canvas.style.top = `${(window.innerHeight - height) / 2}px`;
-    }
-
-    function windowResized() {
-      centerCanvas();
     }
 
     function draw() {
@@ -185,6 +172,7 @@
         if (!this.hitWater) this.pos.y += 5;
         else this.alpha -= 3;
 
+        // 💧药片达到水面下某一点才触发冒泡
         if (!this.hitWater && this.pos.y > height * bubbleTriggerY) {
           this.hitWater = true;
         }
