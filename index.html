@@ -2,24 +2,15 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>ResPOND BLE</title>
   <style>
     html, body {
       margin: 0;
       padding: 0;
-      background: black;
+      background: #087a5e;
       overflow: hidden;
       font-family: 'Segoe UI', sans-serif;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      height: 100vh;
-      width: 100vw;
-    }
-    canvas {
-      display: block;
-      background-color: #087a5e;
     }
     #ui {
       position: absolute;
@@ -70,8 +61,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/p5@1.6.0/lib/p5.min.js"></script>
   <script>
-    const IPAD_RATIO = 2360 / 1640; // ≈1.439
-
     let fishList = [], ripples = [], pellets = [], bubbles = [];
     let waveValue = 0, fishValues = [0, 0, 0], lastFishValues = [0, 0, 0], vibration = 0;
     let motorTriggerCount = 0, lastTrigger = false;
@@ -82,27 +71,14 @@
     const diffThreshold = 4.0;
     const vibrationThreshold = 20;
     const requiredFishTriggers = 2;
-    const waterSurfaceY = 0.6;
-    const bubbleTriggerY = 0.65;
+    const waterSurfaceY = 0.6;     // 水面高度
+    const bubbleTriggerY = 0.65;    // 药片触发泡泡的高度
 
     function setup() {
-      let h = window.innerHeight;
-      let w = h * IPAD_RATIO;
-      if (w > window.innerWidth) {
-        w = window.innerWidth;
-        h = w / IPAD_RATIO;
-      }
-      createCanvas(w, h);
-      pixelDensity(1);
-      noSmooth();
-      fishList = [];
+      createCanvas(windowWidth, windowHeight);
       for (let i = 0; i < 3; i++) {
         fishList.push(new Fish(width * (0.3 + i * 0.2), height * 0.65 + random(-10, 10)));
       }
-    }
-
-    function windowResized() {
-      setup();
     }
 
     function draw() {
@@ -196,6 +172,7 @@
         if (!this.hitWater) this.pos.y += 5;
         else this.alpha -= 3;
 
+        // 💧药片达到水面下某一点才触发冒泡
         if (!this.hitWater && this.pos.y > height * bubbleTriggerY) {
           this.hitWater = true;
         }
