@@ -2,20 +2,22 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>ResPOND BLE</title>
   <style>
     html, body {
       margin: 0;
       padding: 0;
-      background: black;
+      background: #000;
       overflow: hidden;
       font-family: 'Segoe UI', sans-serif;
     }
     #ui {
       position: absolute;
-      z-index: 10;
+      top: 20px;
+      left: 30px;
       color: #ffffff;
+      z-index: 10;
     }
     #ui h1 {
       font-size: 28px;
@@ -59,10 +61,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/p5@1.6.0/lib/p5.min.js"></script>
   <script>
-    let canvasW = 2360;
-    let canvasH = 1640;
-    let scaleFactor = 1;
-
     let fishList = [], ripples = [], pellets = [], bubbles = [];
     let waveValue = 0, fishValues = [0, 0, 0], lastFishValues = [0, 0, 0], vibration = 0;
     let motorTriggerCount = 0, lastTrigger = false;
@@ -77,44 +75,23 @@
     const bubbleTriggerY = 0.65;
 
     function setup() {
-      const ratio = canvasW / canvasH;
-      const screenRatio = window.innerWidth / window.innerHeight;
+      createCanvas(2360, 1640);  // 固定为 iPad 横屏比例
+      centerCanvas();
 
-      if (screenRatio > ratio) {
-        scaleFactor = window.innerHeight / canvasH;
-      } else {
-        scaleFactor = window.innerWidth / canvasW;
-      }
-
-      createCanvas(canvasW, canvasH);
-      noSmooth();
-
-      // 缩放 canvas 到合适大小并居中
-      let canvasElt = document.querySelector('canvas');
-      canvasElt.style.transformOrigin = 'top left';
-      canvasElt.style.transform = `scale(${scaleFactor})`;
-      canvasElt.style.position = 'absolute';
-      canvasElt.style.left = `${(window.innerWidth - canvasW * scaleFactor) / 2}px`;
-      canvasElt.style.top = `${(window.innerHeight - canvasH * scaleFactor) / 2}px`;
-
-      // 同步 UI
-      const ui = document.getElementById('ui');
-      const btns = document.getElementById('buttons');
-      [ui, btns].forEach(el => {
-        el.style.transformOrigin = 'top left';
-        el.style.transform = `scale(${scaleFactor})`;
-        el.style.left = `${(window.innerWidth - canvasW * scaleFactor) / 2 + 30}px`;
-        el.style.top = `${30 * scaleFactor}px`;
-      });
-
-      fishList = [];
       for (let i = 0; i < 3; i++) {
         fishList.push(new Fish(width * (0.3 + i * 0.2), height * 0.65 + random(-10, 10)));
       }
     }
 
+    function centerCanvas() {
+      let canvas = document.querySelector('canvas');
+      canvas.style.position = 'absolute';
+      canvas.style.left = `${(window.innerWidth - width) / 2}px`;
+      canvas.style.top = `${(window.innerHeight - height) / 2}px`;
+    }
+
     function windowResized() {
-      setup(); // 重新调整缩放与布局
+      centerCanvas();
     }
 
     function draw() {
@@ -256,6 +233,7 @@
           await bleCharacteristic.startNotifications();
           bleCharacteristic.addEventListener("characteristicvaluechanged", (event) => {
             const value = new TextDecoder().decode(event.target.value).trim();
+            console.log("BLE value:", value);
             handleData(value);
           });
           document.getElementById("bleButton").textContent = "Disconnect Device";
