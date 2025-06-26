@@ -74,12 +74,30 @@
     const waterSurfaceY = 0.6;     // 水面高度
     const bubbleTriggerY = 0.65;    // 药片触发泡泡的高度
 
-    function setup() {
-      createCanvas(window.innerWidth, window.innerHeight);
-      for (let i = 0; i < 3; i++) {
-        fishList.push(new Fish(width * (0.3 + i * 0.2), height * 0.65 + random(-10, 10)));
-      }
-    }
+const IPAD_RATIO = 2360 / 1640;  // ≈ 1.439
+
+function setup() {
+  let targetHeight = window.innerHeight;
+  let targetWidth = targetHeight * IPAD_RATIO;
+
+  if (targetWidth > window.innerWidth) {
+    // 如果宽度超出屏幕，就以宽度为基准反算高度
+    targetWidth = window.innerWidth;
+    targetHeight = targetWidth / IPAD_RATIO;
+  }
+
+  createCanvas(targetWidth, targetHeight);
+  pixelDensity(1); // 保持画面比例一致性，避免 retina 拉伸
+  noSmooth();
+
+  for (let i = 0; i < 3; i++) {
+    fishList.push(new Fish(width * (0.3 + i * 0.2), height * 0.65 + random(-10, 10)));
+  }
+}
+
+function windowResized() {
+  setup(); // 重设尺寸以适配窗口变更
+}
 
     function draw() {
       background(8, 122, 94);
